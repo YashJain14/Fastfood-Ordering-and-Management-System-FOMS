@@ -1,0 +1,4838 @@
+=== ./module-info.java ===
+// /**
+//  * 
+//  */
+// /**
+//  * 
+//  */
+// module new_project {
+// 	requires java.desktop;
+// }=== ./branch_management/FoodCategory.java ===
+package branch_management;
+
+public enum FoodCategory {
+    BURGER, SIDE, DRINK, SET_MEAL
+}
+=== ./branch_management/FoodCustomisation.java ===
+package branch_management;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+public enum FoodCustomisation {
+    BURGER(Arrays.asList("LESS_PICKLES", "LESS_SAUCE", "NO_CHEESE")),
+    SIDE(Arrays.asList("LESS_SAUCE", "MORE_SAUCE")),
+    DRINK(Arrays.asList("MORE_ICE","LESS_ICE", "NO_ICE")),
+    SET_MEAL(combine(BURGER.customizations, SIDE.customizations, DRINK.customizations));
+
+	
+    private List<String> customizations;
+
+    FoodCustomisation(List<String> customizations) {
+        // Creates a new ArrayList so that the list can be mutable
+        this.customizations = new ArrayList<>(customizations);
+    }
+
+    public List<String> getcustomization() {
+        return customizations;
+    }
+
+    public void addcustomization(String customization) {
+        customizations.add(customization);
+    }
+
+    public void removecustomization(String customization) {
+    	customizations.remove(customization);
+    }
+    
+    @SafeVarargs
+	private static List<String> combine(List<String>... food) {
+        List<String> result = new ArrayList<>();
+        for (List<String> list : food) {
+            result.addAll(list);
+        }
+        return result;
+    }
+}
+
+// === ./branch_management/Menu.java ===
+package branch_management;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.io.*;
+import java.util.Optional;
+
+public class Menu {
+    private List<MenuItem> foodList = new ArrayList<>();
+    private static int nextItemNo = 1;
+
+    public Menu() {
+        this.foodList = new ArrayList<>();
+    }
+
+    // Updated addItem method to include description
+    public boolean addItem(String name, double price, FoodCategory category, boolean availability, String description) {
+        if (findFoodByName(name) == null) {
+            return false; // Item already exists, return false to indicate failure
+        }
+        MenuItem newItem = new MenuItem(name, price, category, availability, description);
+        newItem.setId(nextItemNo++);
+        foodList.add(newItem);
+        return true;
+    }
+
+    public boolean addItem(int id, String name, double price, FoodCategory category, boolean availability, String description) {
+        
+        if (findFoodByName(name) != null) {
+            return false; // Item already exists, return false to indicate failure
+        }
+
+        else if (findItemByNo(id) != null){
+            return false;
+        }
+
+
+        MenuItem newItem = new MenuItem(name, price, category, availability, description);
+        newItem.setId(id);
+        if (id > nextItemNo){
+            nextItemNo = id + 1;
+        }
+        this.foodList.add(newItem);
+        return true;
+    }
+
+
+    // Remove food by id number
+    public boolean removeFoodById(int itemId) {
+        Optional<MenuItem> item = foodList.stream()
+                                            .filter(i -> i.getId() == itemId)
+                                            .findFirst();
+        if (item.isPresent()) {
+            foodList.remove(item.get());
+            adjustItemNumbersAfter(itemId);
+            return true;
+        }
+        return false;
+    }
+
+    // Helper function to ensure that id numbers of MenuItem are sequential
+    private void adjustItemNumbersAfter(int itemNo) {
+        foodList.stream()
+                .filter(i -> i.getId() > itemNo)
+                .forEach(i -> i.setId(i.getId() - 1));
+    }
+
+    public MenuItem findItemByNo(int itemNo) {
+        return foodList.stream()
+                       .filter(i -> i.getId() == itemNo)
+                       .findFirst()
+                       .orElse(null);
+    }
+
+    // Remove a menu item by name
+    public boolean removeFoodByName(String foodName) {
+        return foodList.removeIf(food -> food.getName().equalsIgnoreCase(foodName));
+    }
+
+    // Update the price of a menu item
+    public boolean updateFoodPrice(String foodName, double newPrice) {
+        MenuItem food = findFoodByName(foodName);
+        if (food != null) {
+            food.setPrice(newPrice);
+            return true;
+        }
+        return false; // No such item found
+    }
+
+    // Helper method to find a food item by name
+    public MenuItem findFoodByName(String name) {
+        return foodList.stream()
+                       .filter(food -> food.getName().equalsIgnoreCase(name))
+                       .findFirst()
+                       .orElse(null);
+    }
+
+    // Print all menu items for verification and debugging
+    public void printMenu() {
+        foodList.forEach(food -> System.out.println("Name: " + food.getName() +
+                                                    ", Price: " + food.getPrice() +
+                                                    ", Category: " + food.getCategory() +
+                                                    ", Availability: " + food.isAvailable() +
+                                                    ", Description: " + food.getDescription()));
+    }
+
+    public List<MenuItem> getFoodList() {
+        return foodList;
+    }
+
+    public static void saveMenu(Menu menu, String filename) throws IOException {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filename))) {
+            oos.writeObject(menu);
+        }
+    }
+}
+=== ./branch_management/Branch.java ===
+package branch_management;
+import java.io.Serializable;
+
+public class Branch implements Serializable{
+ private static final long serialVersionUID = 1L;
+
+ private static int HighestId = 0;
+ private int branchId;
+ private String branchName;
+ private BranchHR branchHR;
+ private boolean isOpen;
+ private Menu menu;
+ private String location;
+
+
+ public Branch(String branchName, int staffQuota, String location, boolean isOpen){
+  this.branchId = generateNextId();
+  this.menu = new Menu();
+  this.location = location;
+  this.isOpen = true;
+  this.branchHR = new BranchHR(staffQuota);
+
+ }
+
+public Branch(int branchId, String branchName, int staffQuota, String location, boolean isOpen, int noStaff, int noManagers){
+  this.branchId = branchId;
+  if (branchId > HighestId){
+	HighestId = branchId;
+ }
+  this.branchName = branchName;
+  this.location = location;
+  this.menu = new Menu();
+  this.isOpen = isOpen;
+  this.branchHR = new BranchHR(staffQuota, noStaff, noManagers);
+ }
+
+
+
+ private static synchronized int generateNextId() {
+        return ++HighestId; 
+    }
+
+ public int getBranchId(){
+  return branchId;
+ }
+
+
+ public String getBranchName(){
+  return branchName;
+ }
+
+ public void setBranchName(String branchName) {
+            this.branchName = branchName;
+        }
+
+ public BranchHR getBranchHR(){
+  return branchHR;
+ }
+
+ public boolean getisOpen(){
+  return isOpen;
+ }
+
+ public void setOpen(boolean isOpen) {
+            this.isOpen = isOpen;
+        }
+
+ public String getLocation() {
+            return location;
+        }
+
+ 
+ public Menu getMenu() {
+  return this.menu; 
+ }
+ 
+
+}=== ./branch_management/FoodItem.java ===
+package branch_management;
+
+
+// import branch_management.FoodCategory;
+
+public abstract class FoodItem  {
+    private String name;
+    private double price;
+    private FoodCategory category;
+    private int itemId;
+    private String description;  // New attribute
+
+    public FoodItem(String name, double price, FoodCategory category, String description) {
+        this.name = name;
+        this.price = price;
+        this.category = category;
+        this.description = description;  // Initialize description
+    }
+
+    public FoodItem(FoodItem other) {
+        this.name = other.name;
+        this.price = other.price;
+        this.category = other.category;
+        this.itemId = other.itemId;
+        this.description = other.description;  // Copy description
+    }    
+    
+    public int getId() {
+    	return itemId;
+    }
+    
+    public void setId(int itemId) {
+    	this.itemId = itemId;
+    }
+    
+    
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public double getPrice() {
+        return price;
+    }
+
+    public void setPrice(double price) {
+        this.price = price;
+    }
+
+
+    public FoodCategory getCategory() {
+        return category;
+    }
+    
+
+    public void setCategory(FoodCategory category) {
+        this.category = category;
+    }
+    
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+    
+    @Override
+    public String toString() {
+        return name + " - $" + price + " (" + category + ") - ";
+    }
+}
+
+
+
+
+
+=== ./branch_management/MenuItem.java ===
+package branch_management;
+
+public class MenuItem extends FoodItem {
+    private boolean isAvailable;
+    private FoodCustomisation customisation;
+
+
+    // Updated constructor to include description
+    public MenuItem( String name, double price, FoodCategory category, boolean availability, String description) {
+        super(name, price, category, description);
+        this.isAvailable = availability;
+        this.customisation = determineCustomisation(category);
+
+        
+    }
+
+    
+
+
+
+    private FoodCustomisation determineCustomisation(FoodCategory category) {
+        switch (category) {
+            case BURGER:
+                return FoodCustomisation.BURGER;
+            case DRINK:
+                return FoodCustomisation.DRINK;
+            case SET_MEAL:
+                return FoodCustomisation.SET_MEAL;
+            case SIDE:
+                return FoodCustomisation.SIDE;
+            default:
+                return null; // Or throw an exception if appropriate
+        }
+    }
+
+    public boolean isAvailable() {
+        return isAvailable;
+    }
+
+    public void setAvailable(boolean isAvailable) {
+        this.isAvailable = isAvailable;
+    }
+
+    public FoodCustomisation getCustomisation() {
+        return this.customisation;
+    }
+
+    public void setCustomisation(FoodCustomisation customisation) {
+        this.customisation = customisation;
+    }
+}
+
+	
+
+=== ./branch_management/BranchHR.java ===
+package branch_management;
+import users.Staff;
+
+
+public class BranchHR {
+    private int noManagers;
+    private int noStaff;
+    private int staffQuota;
+
+    public BranchHR(int staffQuota) {
+        this.noManagers = 0;
+        this.noStaff = 0;
+        this.staffQuota = staffQuota;
+    }
+
+    public BranchHR(int staffQuota, int noStaff, int noManager) {
+        this.noManagers = noManager;
+        this.noStaff = noStaff;
+        this.staffQuota = staffQuota;
+    }
+
+    public boolean checkManagerisZero() {
+        if (noManagers == 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public boolean checkStaffisZero() {
+        if (noStaff == 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public boolean addStaff(Staff newStaff) {
+        if (newStaff == null) {
+            return false; 
+        }
+         if (noStaff >= staffQuota) {
+            return false; 
+        }
+        noStaff++;
+        return true;
+    }
+
+    public boolean addManager(Staff newManager) {
+        if (newManager == null) {
+            return false; 
+        }
+        if (noStaff >= staffQuota || noManagers >= calculateExpectedManagers()) {
+            return false; 
+        }
+        noManagers++;
+        noStaff--;
+        return true;
+    }
+
+    private int calculateExpectedManagers() {
+        return (noStaff + 4) / 5;
+    }
+
+    public int getNoManagers() {
+        return noManagers;
+    }
+
+    public int getNoStaff() {
+        return noStaff;
+    }
+
+    public int getStaffQuota() {
+        return staffQuota;
+    }
+
+    
+}=== ./login_system/PasswordInput.java ===
+package login_system;
+
+import java.util.Scanner;
+import db.UserDBController;
+
+public class PasswordInput {
+    private Scanner scanner;
+    private PasswordVerifier passwordVerifier;
+
+    public PasswordInput(Scanner scanner, UserDBController userDBController) {
+        this.scanner = scanner;
+        this.passwordVerifier = new PasswordVerifier(userDBController);
+    }
+
+    public int inputPassword(String staffId) {
+        String userInput;
+        
+        while (true){
+        System.out.println("Enter password for staff ID " + staffId + ":");
+        userInput = scanner.nextLine();
+        if (userInput == null || userInput.trim().isEmpty()) {
+        System.out.println("Password cannot be empty.");
+        continue;}
+        break;
+        
+    }
+        if (passwordVerifier.verifyPassword(staffId, userInput)){
+            if (userInput.equals("password")){
+                return 2;
+            }
+            else return 1;
+    }
+    return 0;
+    }
+}
+
+=== ./login_system/RetrieveStaff.java ===
+package login_system;
+
+import db.UserDBController;
+
+
+
+public class RetrieveStaff {
+    private UserDBController userDBController;
+
+    public RetrieveStaff(UserDBController userDBController){
+        this.userDBController = userDBController;
+    }
+
+    public users.Staff retrieveStaff(String staffId){
+        return userDBController.getStaffByLoginId(staffId);
+    }
+
+}
+=== ./login_system/PasswordReset.java ===
+package login_system;
+
+import db.UserDBController;
+import users.Staff;
+
+public class PasswordReset {
+
+    private UserDBController userDBController;
+    
+    public PasswordReset(UserDBController userDBController) {
+        this.userDBController = userDBController;
+    }
+
+    public boolean changePassword(String staffId, String newPassword) {
+        Staff staffMember = userDBController.getStaffByLoginId(staffId);
+        if (staffMember != null) {
+            staffMember.setPassword(newPassword);
+            return true;
+        } else {
+            return false;
+        }
+    }
+}
+=== ./login_system/LoginPage.java ===
+package login_system;
+
+import java.util.Scanner;
+import interfaces.UserInterface;
+import users.Customer;
+import users.User;
+import db.BranchDBController;
+import db.UserDBController;
+
+public class LoginPage implements UserInterface{
+	
+	private BranchSelector branchSelector;
+	private Scanner scanner;
+	private PasswordInput passwordInput;
+    private User user;
+    private RetrieveStaff retrieveStaff;
+
+    private PasswordChanger passwordChanger;
+
+	
+	public LoginPage(Scanner scanner, UserDBController userDBController, BranchDBController branchDBController) {
+        this.scanner = scanner;
+        this.branchSelector = new BranchSelector(scanner, branchDBController);
+        this.passwordInput = new PasswordInput(scanner, userDBController);
+        this.passwordChanger = new PasswordChanger(scanner, userDBController);
+        this.retrieveStaff = new RetrieveStaff(userDBController);
+    }
+	
+
+	
+	public boolean genUI() {
+        while(true){
+            System.out.println("Welcome to the Fastfood Ordering and Management System (FOMS)\n");
+            System.out.println("Please select an option:\n");
+            System.out.println("1. Staff Login");
+            System.out.println("2. Order Food");
+            System.out.println("Enter 'exit' to close the application.\n");
+
+            String userInput = scanner.nextLine().trim();
+
+            // Process the input
+            while (true){
+            switch (userInput) {
+                case "1": // Staff Login
+                    
+                    while (true){
+                    
+                        System.out.println("Please enter your staff ID:");
+                        String staffId = scanner.nextLine();
+
+                        if (staffId.equals("-1")){
+                            break;}
+
+                        int isValidPassword = this.passwordInput.inputPassword(staffId);
+                        if (isValidPassword == 1) {
+
+                            System.out.println("Login successful!\n");
+                            this.user = this.retrieveStaff.retrieveStaff(staffId);
+
+                            while (true){
+                            System.out.println("Would you like to change your password?\n");
+
+                            System.out.println("1. Yes.");
+                            System.out.println("2. No");
+
+                            String choice = scanner.nextLine();
+
+                            if (choice.equals("2")){
+                                return true;
+                            }
+
+                            else if (choice.equals("1")){
+                                System.out.println("Are you sure you want to change your password?\n");
+
+                                System.out.println("1. Yes.");
+                                System.out.println("2. No");
+
+                                choice = scanner.nextLine();
+
+                                if (choice.equals( "1")){
+                                    this.passwordChanger.changePassword(staffId);
+                                    return true;
+                                }
+                            }
+                        }   
+
+                    } 
+                        else if(isValidPassword == 2){
+                            System.out.println("Login successful!\n");
+                            this.user = this.retrieveStaff.retrieveStaff(staffId);
+
+                            System.out.println("Your password is insecure please change your password\n");
+                            this.passwordChanger.changePassword(staffId, true);
+
+
+                            return true;
+
+                        }
+
+                        
+                        else {
+                            System.out.println("Invalid password. Try again or input '-1' to exit.\n");
+        
+                        }
+                    }
+                    break;
+                case "2": // Order Food
+                    int branchId = this.branchSelector.selectBranch(true);
+
+                    if (branchId == -1){
+                        continue;
+                    }
+
+                    user = new Customer(branchId);
+                    System.out.println("Redirecting to the food ordering system...");
+                    return true;
+                case "exit":
+                    System.out.println("Exiting the application.");
+                    return false;
+
+                    
+                default:
+                    System.out.println("Invalid option. Please try again.");
+                    break;
+            }
+        }
+	}
+}
+
+
+    public User getUser(){
+        return user;
+    }
+	
+}
+=== ./login_system/PasswordVerifier.java ===
+package login_system;
+
+import users.Staff;
+import db.UserDBController;
+
+public class PasswordVerifier {
+
+    private UserDBController userDBController;
+    public PasswordVerifier(UserDBController userDBController){
+        this.userDBController = userDBController;
+
+    }
+    
+   public boolean verifyPassword(String staffId, String userInput) {
+        
+        try {
+            Staff staffMember = userDBController.getStaffByLoginId(staffId);
+            if (staffMember != null) {
+                return staffMember.checkPassword(userInput);
+            }
+        } catch (NullPointerException e) {;
+            return false;
+        }
+        return false;
+    }
+    
+}
+
+=== ./login_system/PasswordChanger.java ===
+package login_system;
+
+import users.Staff;
+import db.UserDBController; 
+import java.util.Scanner;
+
+public class PasswordChanger {
+    private UserDBController userDBController;
+    private Scanner scanner;
+    
+    public PasswordChanger(Scanner scanner, UserDBController userDBController) {
+        this.userDBController = userDBController;
+        this.scanner = scanner;
+    }
+
+    public boolean changePassword(String staffId, boolean insecure) {
+        Staff staffMember = userDBController.getStaffByLoginId(staffId);
+
+        while (true){
+            System.out.println("Input a new password \n");
+
+            String newPassword = this.scanner.nextLine();
+
+         
+            boolean secure = checkComplexity(newPassword);
+
+            if (secure){
+
+                staffMember.setPassword(newPassword);
+                return true;
+            }
+
+            
+            else{
+                System.out.println("Password not secure");
+                System.out.println("Please ensure that your password fulfils the following requirements:\n 1. At least 8 characters \n 2. At least 1 special character \n 3. At least 1 lower case letter \n 4. At least 1 upper case letter \n 5. At least 1 number\n");
+            }
+            
+            }
+        }
+
+
+
+
+
+    public boolean changePassword(String staffId) {
+        Staff staffMember = userDBController.getStaffByLoginId(staffId);
+
+        while (true){
+            System.out.println("Input a new password or input -1 to exit\n");
+
+            String newPassword = this.scanner.nextLine();
+
+            if (newPassword.equals("-1")){
+                return false;
+            }
+
+            boolean secure = checkComplexity(newPassword);
+
+            if (secure){
+
+                staffMember.setPassword(newPassword);
+                return true;
+            }
+
+            
+
+            else{
+                System.out.println("Password not secure");
+                System.out.println("Please ensure that your password fulfils the following requirements:\n 1. At least 8 characters \n 2. At least 1 special character \n 3. At least 1 lower case letter \n 4. At least 1 upper case letter \n 5. At least 1 number\n");
+            }
+            
+            }
+        }
+
+
+    public boolean checkComplexity(String password){
+        
+        return password.matches("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=])(?=\\S+$).{8,}$");
+           
+    }
+
+    
+}
+
+=== ./login_system/BranchSelector.java ===
+package login_system;
+
+import java.util.*;
+import branch_management.Branch;
+import db.BranchDBController;
+
+public class BranchSelector {
+    private Scanner scanner;
+    private BranchDBController branchDBController;
+
+    public BranchSelector(Scanner scanner, BranchDBController branchDBController) {
+        this.scanner = scanner;
+        this.branchDBController = branchDBController;
+    }
+
+    public int selectBranch(boolean isCustomer) {
+        HashMap<Integer, String> branches = branchDBController.getOpenBranches();
+        
+        List <Integer> branchIds = new ArrayList<> (branches.keySet());
+        Collections.sort(branchIds);
+
+        if (branches.isEmpty()) {
+            System.out.println("No branches available.");
+            return -1;
+        }
+
+        System.out.println("Available branches:");
+
+        for (int i : branchIds) {
+            System.out.println((i) + ". " + branches.get(i));
+        }
+
+        Branch selectedBranch = null;
+        int branchId = -1;
+        while (selectedBranch == null) {
+            System.out.print("Please input a branch number: ");
+            try {
+                branchId = Integer.parseInt(scanner.nextLine()); // assuming 1-based user input
+                
+                if (branchId == -1){
+                    return branchId;
+                }
+
+                if (branches.containsKey(branchId)){
+                    selectedBranch = branchDBController.getBranchById(branchId);
+                }
+                else {
+                    System.out.println("Invalid selection. Please try again. Or enter -1 to exit");
+                }
+
+            } catch (NumberFormatException e) {
+                System.out.println("Please enter a valid number. Or enter '-1' to exit.");
+            }
+        }
+
+        return branchId;
+    }
+
+
+
+
+    public int selectBranch() {
+        HashMap<Integer, String> branches = branchDBController.getAllBranches();
+        
+        List <Integer> branchIds = new ArrayList<> (branches.keySet());
+        Collections.sort(branchIds);
+
+        if (branches.isEmpty()) {
+            System.out.println("No branches available.");
+            return -1;
+        }
+
+        System.out.println("Available branches:");
+
+        for (int i : branchIds) {
+            System.out.println((i) + ". " + branches.get(i));
+        }
+
+        Branch selectedBranch = null;
+        int branchId = -1;
+        while (selectedBranch == null) {
+            System.out.print("Please input a branch number: ");
+            try {
+                branchId = Integer.parseInt(scanner.nextLine()); // assuming 1-based user input
+                
+                if (branchId == -1){
+                    return branchId;
+                }
+
+                if (branches.containsKey(branchId)){
+                    selectedBranch = branchDBController.getBranchById(branchId);
+                }
+                else {
+                    System.out.println("Invalid selection. Please try again. Or enter -1 to exit");
+                }
+
+            } catch (NumberFormatException e) {
+                System.out.println("Please enter a valid number. Or enter '-1' to exit.");
+            }
+        }
+
+        return branchId;
+    }
+    
+}
+=== ./customer_ui/ReceiptPrinter.java ===
+package customer_ui;
+// import branch_management.MenuItem;
+import db.OrderListController;
+import orders.Order;
+import orders.OrderItem;
+import java.util.List;
+
+import java.util.Scanner;
+
+public class ReceiptPrinter {
+	
+	private Scanner scanner;
+	private OrderListController orderListController;
+	
+	public ReceiptPrinter(Scanner scanner, OrderListController orderListController) {
+		this.scanner = scanner;
+		this.orderListController = orderListController;
+
+
+	}
+
+	public void printReceipt(List <Integer> orderIds) {
+		
+		System.out.println("Which order do you want a receipt for?");
+		
+		int option;
+		System.out.println("OrderIds: ");
+
+		for (int id: orderIds) {
+			System.out.printf("%d\n", id);
+		}
+		
+		option = scanner.nextInt();
+		
+		if (! orderIds.contains(option)) {
+			System.out.println("Invalid Id input. Exiting.");
+			return;
+		}
+		
+		Order order = this.orderListController.getOrder(option);
+		
+		System.out.printf("OrderId: %d", order.getOrderId());
+		
+		System.out.println("\nID \t Item \t Quantity \t Price \t Customizations \n");
+		
+		int index = 1;
+		
+		for (OrderItem item : order.getOrderItems()) {
+			System.out.printf("%d \t %s \t %d \t %f \t", index++, item.getName(), item.getQuantity(), item.getPrice());
+			
+			item.getCustomisation().forEach(s -> System.out.printf("%s, ", s));
+			System.out.println("");
+        }
+		
+		System.out.println("Total Price: ");
+		System.out.printf("%f \n", order.getPrice());
+		
+	}
+}
+=== ./customer_ui/PaymentHandler.java ===
+package customer_ui;
+
+import java.util.Scanner;
+import orders.*;
+import interfaces.PaymentMethod;
+import interfaces.PaymentDetails;
+import db.PaymentMethodDBController;
+import java.util.List;
+import java.util.ArrayList;
+
+
+public class PaymentHandler {
+
+	private Scanner scanner;
+    private PaymentMethodDBController paymentMethodDBController;
+	
+	private Cart cart;
+	
+	
+	PaymentHandler(Scanner scanner, Cart cart, PaymentMethodDBController paymentMethodDBController){
+		this.scanner = scanner;
+		this.cart = cart;
+        this.paymentMethodDBController = paymentMethodDBController;
+
+	}
+	
+	public boolean processPayment() {
+
+        if (cart.getItems().isEmpty()){
+            System.out.println("Cart is Empty. Please add items to cart for purchase.");
+            return false;
+        }
+		
+
+        List<PaymentMethodEnum> paymentMethodEnums = new ArrayList<>();
+
+
+		boolean paymentSuccessful = false;
+
+
+		
+		while (true) {
+            int i = 1;
+            System.out.println("Select payment method:");
+
+            
+
+            
+            if (paymentMethodDBController.isAvailable(PaymentMethodEnum.CreditCardPayment)){
+                System.out.printf("%d. Credit Card\n", i++);
+                paymentMethodEnums.add(PaymentMethodEnum.CreditCardPayment);
+
+            }
+
+            if (paymentMethodDBController.isAvailable(PaymentMethodEnum.PaynowPayment)){
+                System.out.printf("%d. Paynow \n", i++);
+                paymentMethodEnums.add(PaymentMethodEnum.PaynowPayment);
+
+            }
+
+            if (paymentMethodDBController.isAvailable(PaymentMethodEnum.PayPal)) {
+                System.out.printf("%d. PayPal \n", i++);
+                paymentMethodEnums.add(PaymentMethodEnum.PayPal);
+            }
+    
+            System.out.printf("%d. Quit\n", i);
+
+
+            int index = scanner.nextInt();
+            scanner.nextLine(); 
+
+            if (index == i){
+                System.out.println("Exiting payment menu.");
+            	break;
+            }
+
+            PaymentMethodEnum choice = paymentMethodEnums.get(index-1);
+
+            PaymentMethod paymentMethod = null;
+            PaymentDetails paymentDetails = null;
+            
+
+            if (choice == PaymentMethodEnum.CreditCardPayment) {
+
+                String cardNumber, expiryDate, cvv, name;
+                boolean validDetails;
+
+                do {
+                    System.out.print("Enter your name: ");
+                    name = scanner.nextLine();
+
+                    System.out.print("Enter credit card number: ");
+                    cardNumber = scanner.nextLine();
+
+                    System.out.print("Enter expiry date (MM/YY): ");
+                    expiryDate = scanner.nextLine();
+
+                    System.out.print("Enter CVV: ");
+                    cvv = scanner.nextLine();
+
+                    paymentDetails = new CreditCardDetails(name, cardNumber, expiryDate, cvv);
+                    validDetails = CreditCardDetails.validateDetails((CreditCardDetails) paymentDetails);
+
+                    if (!validDetails) {
+                        System.out.println("Invalid credit card details. Please try again.");
+                    }
+                } while (!validDetails);
+
+                paymentMethod = new CreditCardPayment();
+                         
+                
+            } else if (choice == PaymentMethodEnum.PaynowPayment) {
+            	
+            	paymentDetails = new PaynowDetails();
+                paymentMethod = new PaynowPayment();
+                
+                
+            } else if (choice == PaymentMethodEnum.PayPal) {
+                String email;
+                String password;
+                boolean validDetails = false;
+
+                do {
+                    System.out.print("Enter your email: ");
+                    email = scanner.nextLine();
+
+                    System.out.print("Enter password: ");
+                    password = scanner.nextLine();
+
+
+                    paymentDetails = new PayPalDetails(email, password);
+                    validDetails = ((PayPalDetails) paymentDetails).validatePayment();
+                    if (!validDetails) {
+                        System.out.println("Invalid PayPal details. Please try again.");
+                    }
+                } while (!validDetails);
+                paymentMethod = new PayPal();
+            	
+            }
+            
+            else {
+                System.out.println("Invalid choice. Please try again.");
+                continue;
+            }
+
+            
+            
+            Payment payment = new Payment(cart);
+            paymentSuccessful = payment.processPayment(paymentMethod, paymentDetails);
+
+            if (paymentSuccessful) {
+                System.out.println("Payment Successful");
+            	break; 
+            } else {
+                System.out.println("Payment failed. Please try another payment method.");
+            }
+        }
+		
+		return paymentSuccessful;
+	}
+}
+=== ./customer_ui/OrderStatusHandler.java ===
+package customer_ui;
+
+// import java.util.Scanner;
+
+import db.OrderListController; 
+import orders.Order; 
+import orders.OrderState;
+
+public class OrderStatusHandler {
+	private OrderListController orderListController;  
+	
+	public OrderStatusHandler( OrderListController orderListController) {
+		this.orderListController = orderListController;
+	}
+
+	public void printOrderStatus(int orderId) {
+
+
+		Order order = orderListController.getOrder(orderId);
+
+		if ( order == null){
+			System.out.println("Order not found");
+			return;
+		}
+		
+		OrderState orderStatus = order.getStatus();
+		System.out.println("Order " + orderId + " has order status: " + orderStatus);
+	}
+	
+	public void setOrderStatus(int orderId) {
+
+ 
+		Order order = orderListController.getOrder(orderId);
+
+		if ( order == null){
+			System.out.println("Order not found");
+			return;
+		}
+		
+		// to check if currentstate and newstate are the same 
+		if (order.getStatus().equals(OrderState.READY_TO_PICKUP)) {
+            order.setStatus(OrderState.COMPLETED);
+			System.out.println("Order " + orderId + " has been picked up");
+			return;
+		
+		}
+		
+        System.out.println("Unable to pick up order " + orderId + " Order is not Ready To Pickup.");
+        
+				
+	}
+}=== ./customer_ui/TakeoutHandler.java ===
+package customer_ui;
+
+import java.util.Scanner;
+
+public class TakeoutHandler {
+
+	private Scanner scanner;
+	
+	public TakeoutHandler(Scanner scanner) {
+		this.scanner = scanner;
+	}
+	
+	public int checkTakeAway(){
+		String option;
+		
+		while (true) {
+			System.out.println("Would you like to takeaway?");
+			System.out.println("1. Yes  2: No");
+			
+			option = scanner.nextLine();
+			
+					
+			if (option.equals("1")) {
+				return 1;
+			}
+			
+			else if (option.equals("2")) {
+				return 2;
+			}
+			
+			else if (option.equals("-1")) {
+				return 0;
+			}
+			
+			else {
+				System.out.println("Invalid input. Try again or input -1 to cancel payment.");
+			}
+		}
+	}
+}
+=== ./customer_ui/CustomerMainPage.java ===
+package customer_ui;
+
+import java.util.InputMismatchException;
+import java.util.Scanner;
+
+import interfaces.UserInterface;
+import db.*;
+
+import users.Customer;
+
+
+public class CustomerMainPage implements UserInterface{
+	
+	Scanner scanner;
+	PaymentHandler paymentHandler;
+	ReceiptPrinter receiptPrinter;
+	MenuHandler menuHandler;
+	OrderStatusHandler orderStatusHandler;
+	CartHandler cartHandler;
+	OrderPlacer orderPlacer;
+	TakeoutHandler takeoutHandler;
+	Customer user;
+	
+	public CustomerMainPage(Scanner scanner,PaymentMethodDBController paymentMethodDBController, Customer user, BranchDBController branchDBController, OrderListController orderListController) {
+		this.user = user;
+		this.scanner = scanner;
+		
+		this.menuHandler = new MenuHandler(user.getBranch(), branchDBController);
+		
+		this.cartHandler = new CartHandler(scanner, user.getBranch(), branchDBController);
+		this.paymentHandler = new PaymentHandler(scanner, this.cartHandler.getCart(), paymentMethodDBController);
+		this.receiptPrinter = new ReceiptPrinter(scanner, orderListController);
+		this.orderStatusHandler = new OrderStatusHandler(orderListController);
+		this.orderPlacer = new OrderPlacer(this.cartHandler.getCart(), orderListController);
+		this.takeoutHandler = new TakeoutHandler(scanner);
+		
+		
+	}
+	
+	public boolean genUI() {
+		
+		System.out.println("Welcome, what would you like to do?");
+		
+		int choice = 0;
+		
+		while (true) {
+			System.out.println("\n");
+			System.out.println("Select an action:\n");
+			System.out.println("1. View Menu\n");
+			System.out.println("2. Add Item to Cart\n");
+			System.out.println("3. View Cart\n");
+			System.out.println("4. Remove Item from Cart\n");
+			System.out.println("5. Clear Cart\n");
+			System.out.println("6. Make Payment\n");
+			System.out.println("7. View Receipt\n");
+			System.out.println("8. View Order Status\n");
+			System.out.println("9. Receive Order");
+			System.out.println("10. Exit\n");
+			
+			try{
+				choice = scanner.nextInt();
+				
+
+			}catch(InputMismatchException e){
+				scanner.nextLine();
+				continue;
+			}
+			
+			
+			switch (choice) {
+				case 1:
+					
+					this.menuHandler.viewMenu();
+					
+					break;
+			
+				case 2:
+					boolean added = this.cartHandler.addItem();
+			
+					if (added) {
+						System.out.println("Item successfully added to Cart");
+					}
+					break;
+			
+				case 3:
+					
+					this.cartHandler.printCart();
+					
+					break;
+			
+				case 4:
+					boolean removed = this.cartHandler.removeItem();
+			
+					if (removed) {
+						System.out.println("Item successfully removed from Cart");
+					}
+			
+					break;
+			
+				case 5:
+					boolean cleared = this.cartHandler.clearCart();
+			
+					if (cleared) {
+						System.out.println("Cart was successfully cleared");
+					}
+					break;
+			
+				case 6:
+					int option;
+					boolean isTakeAway;
+			
+					boolean paymentSuccessful = this.paymentHandler.processPayment();
+			
+					if (paymentSuccessful) {
+			
+						option = this.takeoutHandler.checkTakeAway();
+			
+						if (option == 0) break;
+			
+						else isTakeAway = option == 1;
+			
+						int orderId = this.orderPlacer.placeOrder(isTakeAway, this.user.getBranch());
+			
+						user.addOrder(orderId);
+			
+			
+						System.out.printf("Your Order Number is: %d", orderId);
+					} else {
+						System.out.println("Payment not successful returning to Main Menu.");
+					}
+					break;
+			
+				case 7:
+					if (user.getOrders().isEmpty()) {
+						System.out.println("No Orders Yet. Exiting");
+						break;
+					}
+			
+					this.receiptPrinter.printReceipt(user.getOrders());
+					break;
+			
+				case 8:
+			
+					System.out.println("Which order do you want view status of?");
+			
+					option = scanner.nextInt();
+			
+					this.orderStatusHandler.printOrderStatus(option);
+					break;
+			
+				case 9:
+					System.out.println("What is your order number?");
+			
+					option = scanner.nextInt();
+
+			
+					this.orderStatusHandler.setOrderStatus(option);
+					break;
+			
+				case 10:
+					System.out.println("Are you sure you want to exit? Your Cart and Order History will be lost.");
+			
+					System.out.println("1. Yes I am sure 2. No");
+			
+					option = scanner.nextInt();
+			
+					if (option == 1) {
+						return true;
+					}
+					break;
+			
+				default:
+					System.out.println("Invalid option.\n");
+					break;
+			}
+			
+			
+		}
+		
+	}
+	
+
+}
+=== ./customer_ui/MenuHandler.java ===
+package customer_ui;
+
+import branch_management.*;
+import db.BranchDBController;
+
+public class MenuHandler {
+	
+	private Menu menu;
+	
+	
+	
+	public MenuHandler(int branchId, BranchDBController branchDBController) {
+		
+		Branch branch = branchDBController.getBranchById(branchId);
+		
+		this.menu = branch.getMenu();
+		
+		
+	}
+	
+
+    public void viewMenu() {
+		System.out.println("\nItem \t Quantity \t Price \t Customizations \n");
+		
+		if (this.menu != null && this.menu.getFoodList() != null) {
+		for (MenuItem food : this.menu.getFoodList()) {
+			if (food.isAvailable()) {
+				System.out.println("ID: " + food.getId() +
+						", Name: " + food.getName() +
+						", Price: " + food.getPrice() +
+						", Category: " + food.getCategory() +
+						", Availability: " + food.isAvailable());
+			}
+		}
+		} else {
+			System.out.println("Menu is empty or not available.");
+		}
+	}
+	
+    
+	
+}
+=== ./customer_ui/CartHandler.java ===
+package customer_ui;
+
+import java.util.*;
+import orders.Cart;
+import orders.OrderItem;
+import branch_management.*;
+import db.BranchDBController;
+
+public class CartHandler {
+
+	private Scanner scanner;
+	private Cart cart;
+	private Menu menu;
+	
+	public CartHandler(Scanner scanner,  int branchId, BranchDBController branchDBController) {
+		this.scanner = scanner;
+		Branch branch = branchDBController.getBranchById(branchId);
+		
+		this.menu = branch.getMenu();
+		this.cart = new Cart();
+	}
+	
+	public Cart getCart() {
+		return this.cart;
+	}
+	
+	public void printCart() {
+		System.out.printf("Cart: ");
+		
+		System.out.println("\nID \t Item \t Quantity \t Price \t Customizations \n");
+		
+		int index = 1;
+		
+		for (OrderItem item : this.cart.getItems()) {
+			// System.out.printf("%d \t %s \t %d \t %f \t", index++, item.getName(), item.getQuantity(), item.getPrice());
+			System.out.printf("%d \t %s \t %d \t %.2f \t", index++, item.getName(), item.getQuantity(), item.getPrice());
+
+			item.getCustomisation().forEach(s -> System.out.printf("%s, ", s));
+			System.out.println("");
+        }
+		
+		System.out.println("Total Price: ");
+		System.out.printf("%f \n", this.cart.getTotalCost());
+		
+	}
+	
+	
+	public boolean addItem() {
+		
+		String input;
+		int int_input;
+		MenuItem menuItem = null;
+
+		scanner.nextLine();
+		
+		while (menuItem == null) {
+			
+			System.out.println("Input the name or ID of the item to add to cart: ");
+	
+			input = scanner.nextLine();
+		
+			try {
+				int itemId = Integer.parseInt(input);
+				
+				if (itemId == -1) {
+					return false;
+				}
+				
+				menuItem = menu.findItemByNo(itemId);
+			}catch (NumberFormatException e) {
+				menuItem = menu.findFoodByName(input);
+			}
+			
+			if (menuItem == null) {
+				System.out.println("Invalid Item Id or Name. Try again or input -1 to exit");
+			}
+
+			else if(! menuItem.isAvailable()){
+				System.out.println("Invalid Item Id or Name. Try again or input -1 to exit");
+			}
+			
+		} 
+
+		List<String> customisations = new ArrayList<>(menuItem.getCustomisation().getcustomization());
+		
+		List<String> selected_cust = new ArrayList<>();
+
+		while(customisations.size() > 0) {
+			
+			System.out.println("Add Customizations");
+
+			System.out.println("0: No More Customizations");
+			for (int x = 0; x <  customisations.size(); x++) {
+				System.out.printf("%d: %s \n", x+1, customisations.get(x));
+				}
+
+			System.out.println("-1: Cancel");
+			
+			int_input = scanner.nextInt();
+				
+			if (int_input == -1) {
+				return false;
+			}
+			else if (int_input == 0) {
+				break;
+			}
+			
+			else if (int_input >= customisations.size() | int_input < 0) {
+				System.out.println("Invalid option. Try Again or input -1 to exit");
+				continue;
+			}
+			
+			else {
+				selected_cust.add(customisations.get(int_input - 1));
+				customisations.remove(int_input - 1);
+			}
+
+			System.out.println("Current Customizations:");
+			for (String cust : selected_cust) {
+				System.out.printf( "%s \n", cust);
+				}
+
+		}
+		
+		while(true) {
+			System.out.println("How many items would you like?");
+			
+			int_input = scanner.nextInt();
+			
+			if (int_input == -1) {
+				return false;
+			}
+			
+			else if (int_input <= 0) {
+				System.out.println("Invalid input. Try again or input -1 to exit");
+				continue;
+			}
+			
+			else {
+				break;
+			}
+			
+		}
+		
+		if (selected_cust.isEmpty()){
+			selected_cust.add("None");
+		}
+		
+		
+		OrderItem orderItem = new OrderItem(menuItem, selected_cust, int_input);
+		
+		this.cart.addItem(orderItem);
+		
+		return true;
+		
+	}
+	
+	
+	public boolean removeItem() {
+		int input;
+		
+		System.out.println("Input the ID of the item to remove:");
+			
+		input = scanner.nextInt();
+			
+		return this.cart.removeItem(input);	
+	}
+	
+	public boolean clearCart() {
+		int input;
+		
+		System.out.println("Are you sure you want to clear ALL items from cart?");
+		
+		System.out.println("1: Yes, 2: No");
+		
+		input = scanner.nextInt();
+		
+		if (input == 1) {
+			this.cart.clearCart();
+			return true;
+		}
+		
+		return false;
+	}
+	
+	
+	
+}
+=== ./customer_ui/OrderPlacer.java ===
+package customer_ui;
+
+import db.OrderListController;
+import orders.Cart;
+
+public class OrderPlacer {
+
+    private Cart cart;
+    private OrderListController orderListController;
+    
+    public OrderPlacer(Cart cart, OrderListController orderListController){
+        this.cart = cart;
+        this.orderListController = orderListController;
+    }
+    
+    public int placeOrder(boolean isTakeAway, int branchId) {
+        
+        // Check if the cart has items before placing an order
+
+        System.out.println("Placing order");
+        return this.orderListController.createOrder(cart, isTakeAway, branchId);
+        
+    }
+}
+=== ./staff_ui/StaffListViewer.java ===
+package staff_ui;
+import db.UserDBController;
+import users.Staff;
+
+
+public class StaffListViewer {
+    private UserDBController userDBController;
+
+    public StaffListViewer(UserDBController userDBController) {
+        this.userDBController = userDBController;
+    }
+
+	public void viewStaffList(int branchId){
+
+
+        for (Staff staff : userDBController.getAllStaff()) {
+			if (staff.getBranchId() == branchId) {
+				System.out.println("StaffId: " + staff.getStaffId() +
+						"Name: " + staff.getName() +
+                        ", Role: " + staff.getRole() +
+                        ", Branch: " + staff.getBranchId() +
+                        ", Gender: " + staff.getGender());
+			}
+        }
+        
+
+	}
+
+
+}
+=== ./staff_ui/AdminPage.java ===
+package staff_ui;
+import users.Staff;
+import db.UserDBController;
+import db.BranchDBController;
+import interfaces.UserInterface;
+import db.PaymentMethodDBController;
+
+import java.util.Scanner; 
+
+public class AdminPage implements UserInterface{
+	private Scanner scanner; 
+	private FilterCriteria filterCriteria;
+	private AccountManager accountManager; 
+	private BranchStatusHandler branchStatusHandler; 
+	private TransferManager transferManager; 
+	private Staff user; 
+	private PaymentManager paymentManager;
+	private login_system.BranchSelector branchSelector;
+	private ListBranches listBranches;
+	
+	public AdminPage(Scanner scanner, Staff user, UserDBController userDBController, BranchDBController branchDBController, PaymentMethodDBController paymentMethodDBController) {
+        this.scanner = scanner;
+        this.user = user;
+        this.filterCriteria = new FilterCriteria(scanner, userDBController);
+        this.accountManager = new AccountManager(scanner, userDBController, branchDBController);
+        this.transferManager = new TransferManager(userDBController);
+		this.branchStatusHandler = new BranchStatusHandler(scanner, branchDBController);
+		this.paymentManager = new PaymentManager(scanner, paymentMethodDBController);
+		this.branchSelector = new login_system.BranchSelector(scanner, branchDBController);
+		this.listBranches = new ListBranches(branchDBController);
+		
+
+    }
+	
+	@Override
+	public boolean genUI() {
+		System.out.println("Admin Actions\n");
+		System.out.printf("Welcome %s, what would you like to do?\n", user.getName());
+	 
+		String choice;
+		  
+		while (true) {
+			System.out.println("\n");
+			System.out.println("Select an action:\n");
+			System.out.println("1. Display Filtered Staff List\n");
+			System.out.println("2. Edit Staff Accounts\n");
+			System.out.println("3. Assign Branch Managers\n");
+			System.out.println("4. Transfer Staff/Manager among branches\n");
+			System.out.println("5. Add/remove payment method\n");
+			System.out.println("6. Open/close branch\n");
+			System.out.println("7. List Branches");
+		    System.out.println("8. Logout\n");
+		   
+		    choice = scanner.nextLine();
+		    int branchId;
+		    String staffId;
+		   
+		    switch (choice){
+
+		    // display staff list 
+		    case "1":
+				filterCriteria.promptFilterOptions();
+		    	break;
+		     
+		    // edit staff accounts 
+		    case "2":
+		    	System.out.println("Select an Edit action:\n");
+		        System.out.println("1. Add Account \n");
+		        System.out.println("2. Remove Account \n");
+
+
+		        String editChoice = scanner.nextLine();
+		        
+		        switch (editChoice) {
+		            case "1":
+		            	System.out.println("Enter Branch ID:\n");
+		            	String addbranchId = scanner.nextLine();
+
+						try {  
+							branchId = Integer.parseInt(addbranchId);  
+						  } catch(NumberFormatException e){  
+							System.out.println("Invalid input. Exiting.\n");
+							break;
+						  }  
+
+		                accountManager.addAccount(branchId);
+		                break;
+		            case "2":
+		            	System.out.println("Enter Staff ID:\n");
+						scanner.nextLine();
+		            	staffId = scanner.nextLine();
+		                accountManager.removeAccount(staffId);
+		                break;
+		            default:
+		                System.out.println("Invalid choice. Exiting.\n\n");
+		                break;
+				}
+				break;
+		     
+		    // assign branch managers
+		    case "3":
+				branchId = this.branchSelector.selectBranch();
+		    	System.out.println("Enter Staff ID:\n");
+            	staffId = scanner.nextLine();
+		        transferManager.assignManager(branchId, staffId);
+		        break; 
+		     
+		        
+		    // transfer Staff/Manager among branches
+		    case "4": 
+				System.out.println("\nEnter Destination Branch ID:");
+				int dstBranchId = Integer.parseInt(scanner.nextLine());
+				System.out.println("\nEnter Source Branch ID:");
+				int srcBranchId = Integer.parseInt(scanner.nextLine());
+				System.out.println("\nEnter Staff ID:");
+				staffId = scanner.nextLine();
+				transferManager.transferStaff(dstBranchId, srcBranchId, staffId);
+				break;
+		    	
+		    // add/remove payment method
+		    case "5": 
+				this.paymentManager.managePayments();
+				break;
+		    	
+		    // open/close branch 
+		    case "6": 
+				branchId = this.branchSelector.selectBranch();
+
+				this.branchStatusHandler.changeBranchStatus(branchId);
+
+				break;
+
+			case "7":
+				this.listBranches.listBranches();
+				break;
+		     
+		    // exit 
+		    case "8":
+				System.out.println("Are you sure you want to Log Out?");
+				System.out.println("1. Yes I am sure 2. No");
+					
+				String option = scanner.nextLine();
+				
+				if (option.equals("1")) {
+					return true;
+				}
+				break;
+		    	
+		    default:
+                System.out.println("Invalid choice, please select again.");
+                break;
+		    }
+		  }
+	}
+	}
+
+=== ./staff_ui/UserUpdater.java ===
+package staff_ui;
+import db.UserDBController;
+import java.util.Scanner;
+import users.Staff;
+
+public class UserUpdater {
+
+    private UserDBController userDBController;
+    private Scanner scanner;
+
+    public UserUpdater(Scanner scanner, UserDBController userDBController){
+        this.scanner = scanner;
+        this.userDBController = userDBController;
+    }
+
+
+    public boolean updateUser(){
+        System.out.print("Enter the Staff Login ID of the staff member to update: ");
+        String loginId = scanner.nextLine();
+        Staff staffToUpdate = this.userDBController.getStaffByLoginId(loginId);
+        if (staffToUpdate == null) {
+            System.out.println("Staff member not found.");
+            return false;
+        }
+
+        System.out.println("Select which attribute to update:");
+        System.out.println("1. Name");
+        System.out.println("2. Gender");
+        System.out.println("3. Age");
+        System.out.println("4. StaffId");
+        System.out.print("Enter your choice: ");
+        int choice = scanner.nextInt();
+        scanner.nextLine();
+
+        switch (choice) {
+            case 1:
+                System.out.print("Enter new name: ");
+                String newName = scanner.nextLine();
+                staffToUpdate.setName(newName);
+                break;
+          
+            case 2:
+                System.out.print("Enter new gender: ");
+                char newGender = scanner.nextLine().charAt(0);
+                staffToUpdate.setGender(newGender);
+                break;
+            case 3:
+                System.out.print("Enter new age: ");
+                int newAge = scanner.nextInt();
+
+                if (newAge < 0){
+                    System.out.print("Invalid age");
+                    return false;
+                }
+                staffToUpdate.setAge(newAge);
+                scanner.nextLine();
+                break;
+            case 4:
+                System.out.print("Enter new staffId: ");
+                String newId = scanner.nextLine();
+                staffToUpdate.setId(newId);
+                break;
+            default:
+                System.out.println("Invalid choice.");
+                return false;
+     }
+
+     return true;
+
+}
+}=== ./staff_ui/PaymentManager.java ===
+package staff_ui;
+
+import orders.PaymentMethodEnum;
+
+import java.util.*;
+
+import db.PaymentMethodDBController;
+
+public class PaymentManager {
+    private HashMap <PaymentMethodEnum, Integer> paymentMethodsStatus;
+    private PaymentMethodDBController paymentMethodDBController;
+
+    private Scanner scanner;
+
+    public PaymentManager(Scanner scanner, PaymentMethodDBController paymentMethodDBController) {
+
+        this.paymentMethodDBController = paymentMethodDBController;
+
+        paymentMethodsStatus = new HashMap<>();
+
+        paymentMethodsStatus.put(PaymentMethodEnum.CreditCardPayment, paymentMethodDBController.isAvailable(PaymentMethodEnum.CreditCardPayment) ? 1:0);
+        paymentMethodsStatus.put(PaymentMethodEnum.PaynowPayment, paymentMethodDBController.isAvailable(PaymentMethodEnum.PaynowPayment) ? 1:0);
+        paymentMethodsStatus.put(PaymentMethodEnum.PayPal, paymentMethodDBController.isAvailable(PaymentMethodEnum.PayPal) ? 1:0);
+        
+        this.scanner = scanner;
+
+
+        
+    }
+
+    public void managePayments() {
+        String input;
+        while (true) {
+            System.out.println("\nAdd/Remove Payment Methods:");
+            System.out.println("1. Add Payment");
+            System.out.println("2. Remove Payment");
+            System.out.println("3. Show Current Payment Methods");
+            System.out.println("4. Exit\n");
+            System.out.print("Choose an option: ");
+            input = scanner.nextLine();
+
+            switch (input) {
+                case "1":
+                    addPayment(scanner);
+                    break;
+                case "2":
+                    removePayment(scanner);
+                    break;
+                case "3":
+                    showPayments();
+                    break;
+                case "4":
+                    System.out.println("Exiting Payment Manager.\n\n");
+                    return;
+                default:
+                    System.out.println("Invalid choice. Please try again.");
+                    break;
+            }
+        }
+    }
+
+    private void addPayment(Scanner scanner) {
+        System.out.println("Available Payments to Add:");
+
+        for (PaymentMethodEnum paymentMethodEnum : paymentMethodsStatus.keySet()){
+            if (paymentMethodsStatus.get(paymentMethodEnum) == 0)
+                System.out.println(paymentMethodEnum);
+        }
+
+       
+
+        System.out.print("Enter Payment Method to Enable (CreditCard, PayNow, PayPal): ");
+        String methodName = scanner.nextLine().trim();
+        PaymentMethodEnum key = methodName.equalsIgnoreCase("CreditCard") ? PaymentMethodEnum.CreditCardPayment :
+                     methodName.equalsIgnoreCase("PayNow") ? PaymentMethodEnum.PaynowPayment :
+                     methodName.equalsIgnoreCase("PayPal") ? PaymentMethodEnum.PayPal : null;
+
+        if (key != null && paymentMethodsStatus.containsKey(key) && (paymentMethodsStatus.get(key) == 0)) {
+            paymentMethodsStatus.replace(key, 1);
+            paymentMethodDBController.setAvailable(key, 1);
+            System.out.println(key + " has been enabled.");
+        } else {
+            System.out.println("Invalid method name or method already enabled.");
+        }
+    }
+
+    private void removePayment(Scanner scanner) {
+        System.out.println("Enabled Payments:");
+        for (PaymentMethodEnum paymentMethodEnum : paymentMethodsStatus.keySet()){
+            if (paymentMethodsStatus.get(paymentMethodEnum) == 0)
+                System.out.println(paymentMethodEnum);
+        }
+
+
+        System.out.print("Enter Payment Method to Disable (CreditCard, PayNow, PayPal): ");
+        String methodName = scanner.nextLine().trim();
+        PaymentMethodEnum key = methodName.equalsIgnoreCase("CreditCard") ? PaymentMethodEnum.CreditCardPayment :
+                     methodName.equalsIgnoreCase("PayNow") ? PaymentMethodEnum.PaynowPayment :
+                     methodName.equalsIgnoreCase("PayPal") ? PaymentMethodEnum.PayPal : null;
+
+        System.out.println(methodName);
+        System.out.println(paymentMethodsStatus.get(key));
+
+        if (key != null && paymentMethodsStatus.containsKey(key) && (paymentMethodsStatus.get(key) == 1)) {
+            paymentMethodsStatus.replace(key, 0);
+            System.out.println(key + " has been disabled.");
+
+            paymentMethodDBController.setAvailable(key, 0);
+        } else {
+            System.out.println("Invalid method name or method already disabled.");
+        }
+    }
+
+    private void showPayments() {
+        System.out.println("Current Payment Methods Status:");
+        for (PaymentMethodEnum paymentMethodEnum : paymentMethodsStatus.keySet()){
+            System.out.println(paymentMethodEnum + " : " + (paymentMethodsStatus.get(paymentMethodEnum) == 1));
+        }
+    }
+}
+=== ./staff_ui/ListBranches.java ===
+package staff_ui;
+import java.util.HashMap;
+import db.BranchDBController;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import branch_management.Branch;
+import branch_management.BranchHR;
+
+public class ListBranches {
+    private BranchDBController branchDBController;
+
+    public ListBranches(BranchDBController branchDBController){
+        this.branchDBController = branchDBController;
+    }
+
+
+    public void listBranches(){
+        HashMap<Integer, String> branches = branchDBController.getAllBranches();
+        
+        List <Integer> branchIds = new ArrayList<> (branches.keySet());
+        Collections.sort(branchIds);
+
+        if (branches.isEmpty()) {
+            System.out.println("No branches available.");
+            return;
+        }
+
+        System.out.println("Available branches:");
+
+        for (int i : branchIds) {
+            Branch branch = branchDBController.getBranchById(i);
+            BranchHR branchHR = branch.getBranchHR();
+            System.out.println((i) + ". " + branches.get(i) + "     Current Status: "  + (branch.getisOpen() ? "Open  " : "Closed") + "      Staff Quota: " + branchHR.getStaffQuota() + "       No Staff: " + branchHR.getNoStaff() + "              No Managers:" + branchHR.getNoManagers());
+        }
+    }
+    
+}
+=== ./staff_ui/BranchStaffPage.java ===
+package staff_ui;
+
+import java.util.InputMismatchException;
+import java.util.Scanner;
+
+
+import db.OrderListController;
+import interfaces.UserInterface;
+import users.Staff;
+
+public class BranchStaffPage implements UserInterface{
+    protected OrderViewer orderViewer;
+    protected OrderStatusHandler orderStatusHandler;
+    protected Scanner scanner;
+    protected Staff branchStaff;
+
+    public BranchStaffPage(Scanner scanner, Staff BranchStaff, OrderListController orderListController) {
+        this.scanner = scanner;
+        this.branchStaff = BranchStaff;
+        this.orderViewer = new OrderViewer(BranchStaff.getBranchId(), orderListController);
+        this.orderStatusHandler = new OrderStatusHandler(orderListController, branchStaff.getBranchId());
+    }
+	
+	@Override
+	public boolean genUI() {
+		System.out.println("Branch Staff Actions\n");
+		System.out.printf("Welcome %s, what would you like to do? \n", branchStaff.getName());
+	 
+		int orderId; 
+		  
+		while (true) {
+			System.out.println("\n");
+			System.out.println("Select an action:\n");
+			System.out.println("1. View New Orders\n");
+			System.out.println("2: List All OrderIds\n");
+			System.out.println("3. View a Particular Order\n");
+			System.out.println("4. Check Order Status\n");
+			System.out.println("5. Change Order Status\n");
+		    System.out.println("6. Exit\n");
+		   
+		    String choice = scanner.nextLine();
+		   
+		    switch (choice){
+		    // View New Orders
+		    case "1":
+		    	orderViewer.viewUnfinishedOrders();
+		    	break;
+		     
+
+			case "2":
+				System.out.println("The orders you can view are: ");
+				orderViewer.listOrders();
+				break;
+
+		    // View a Particular Order
+		    case "3":
+				orderId = getOrderID();
+				if (orderId == -1) break;
+		    	orderViewer.viewOrder(orderId);
+		    	break;
+		     
+		    // Check Order Status
+		    case "4":
+				orderId = getOrderID();
+				if (orderId == -1) break;
+		        orderStatusHandler.printOrderStatus(orderId);
+		        break; 
+		     
+		    // Update Order Status
+		    case "5":
+				System.out.println("Set Order as Ready to Collect");
+				orderId = getOrderID();
+				if (orderId == -1) break;
+		        orderStatusHandler.setOrderStatus(orderId);		        
+		        break;
+		     
+		    // exit 
+		    case "6":
+				System.out.println("Are you sure you want to Log Out?");
+				System.out.println("1. Yes I am sure 2. No");
+					
+				
+				String option = this.scanner.nextLine();
+				
+				if (option.equals("1")) {
+					return true;
+				} 
+		    	
+		    default:
+                System.out.println("Invalid choice, please select again.");
+                break;
+		     
+		    }
+		  }
+	}
+	
+	public int getOrderID() {
+		int orderId = -1; 
+        System.out.println("Input your orderId: ");
+
+		try {
+			orderId = Integer.parseInt(scanner.nextLine());
+
+			
+		} catch (InputMismatchException e) {
+			System.out.println("Invalid input. Please enter a valid integer.");
+			return -1;		
+		}
+        
+        return orderId;
+    }
+	
+	// // get state 
+	// public OrderState selectState() {
+	// 	OrderState selectedState = null;
+	//     boolean validInput = false;
+	    
+	//     while (!validInput) {
+	//         System.out.println("Select the new order status:\n");
+	//         System.out.println("1. New Order \n");
+	//         System.out.println("2. Ready to Pick up \n");
+	//         System.out.println("3. Completed \n");
+	//         int statusChoice = scanner.nextInt();
+	        
+	//         switch (statusChoice) {
+	//             case 1:
+	//                 selectedState = OrderState.NEW_ORDER;
+	//                 validInput = true;
+	//                 break;
+	//             case 2:
+	//                 selectedState = OrderState.READY_TO_PICKUP;
+	//                 validInput = true;
+	//                 break;
+	//             case 3:
+	//                 selectedState = OrderState.COMPLETED;
+	//                 validInput = true;
+	//                 break;
+	//             default:
+	//                 System.out.println("Invalid choice. Please enter a valid option (1-3).");
+	//                 break;
+	//         }
+	//     } 
+	//    return selectedState;
+	// }
+	   
+}
+	
+	
+=== ./staff_ui/ManagerPage.java ===
+package staff_ui;
+
+import java.util.Scanner;
+import db.BranchDBController;
+import db.OrderListController;
+import db.UserDBController;
+import users.Staff;
+
+
+public class ManagerPage extends BranchStaffPage {
+	private StaffListViewer staffListViewer; 
+	private MenuItemHandler menuItemHandler; 
+	private Scanner scanner; 
+
+    public ManagerPage(Scanner scanner, Staff branchStaff, OrderListController orderListController, UserDBController userDBController, BranchDBController branchDBController) {
+	
+		super(scanner, branchStaff, orderListController);
+        this.scanner = scanner; 
+		this.menuItemHandler = new MenuItemHandler(scanner, branchStaff.getBranchId(), branchDBController);
+		this.staffListViewer = new StaffListViewer(userDBController);
+        
+    }
+
+    // Override genUI method to include additional functionalities
+    @Override
+    public boolean genUI() {
+    	System.out.println("Manager Actions\n");
+		System.out.printf("Welcome %s, what would you like to do? \n", branchStaff.getName());
+	 
+
+        
+        while (true) {
+			System.out.println("\n");
+			System.out.println("Select an action:\n");
+			System.out.println("1. View New Orders\n");
+			System.out.println("2: List All OrderIds\n");
+			System.out.println("3. View a Particular Order\n");
+			System.out.println("4. Check Order Status\n");
+			System.out.println("5. Change Order Status\n");
+			System.out.println("6. View Staff List\n");
+			System.out.println("7. Edit Menu\n");
+		    System.out.println("8. Exit\n");
+		   
+		    String choice = scanner.nextLine();
+			int orderId;
+		   
+		    switch (choice){
+		    // View New Orders
+		    case "1":
+		    	orderViewer.viewUnfinishedOrders();
+		    	break;
+		     
+
+			case "2":
+				System.out.println("The orders you can view are: ");
+				orderViewer.listOrders();
+				break;
+
+		    // View a Particular Order
+		    case "3":
+				orderId = getOrderID();
+				if (orderId == -1) break;
+		    	orderViewer.viewOrder(orderId);
+		    	break;
+		     
+		    // Check Order Status
+		    case "4":
+				orderId = getOrderID();
+				if (orderId == -1) break;
+		        orderStatusHandler.printOrderStatus(orderId);
+		        break; 
+		     
+		    // Update Order Status
+		    case "5":
+				System.out.println("Set Order as Ready to Collect");
+				orderId = getOrderID();
+				if (orderId == -1) break;
+		        orderStatusHandler.setOrderStatus(orderId);		        
+		        break;
+		     		     
+		    // view staff list  
+		    case "6":
+            	staffListViewer.viewStaffList(branchStaff.getBranchId());
+                break;
+
+            // Edit Menu
+            case "7":
+            	boolean goBack = selectMenuEdit(); // check if manager chose to go back
+                if (goBack) {
+                    continue; // show previous page
+                }
+                break;
+
+            // Exit
+            case "8":
+				System.out.println("Are you sure you want to Log Out?");
+				System.out.println("1. Yes I am sure 2. No");
+					
+				int option = scanner.nextInt();
+				
+				if (option == 1) {
+					return true;
+				}
+            default:
+                System.out.println("Invalid choice, please select again.");
+                break;
+            }
+        }  
+    }
+    
+    private boolean selectMenuEdit() {
+    	boolean valid = false; // if choice is not valid, keep repeating
+    	String editChoice; 
+    	
+    	while(!valid) {
+			System.out.println("Select Menu Edits:\n");
+	        System.out.println("1. Add Item \n");
+			System.out.println("2. Remove Item \n");
+			System.out.println("3. Edit Price \n");
+			System.out.println("4. Edit Availability \n");
+			System.out.println("5. View Menu");
+			System.out.println("6. Back to Previous Page \n");
+			editChoice = scanner.nextLine(); 
+			
+			switch(editChoice) {
+			case "1":
+				menuItemHandler.addItem(); 
+				valid = true; 
+				break; 
+				
+			case "2":
+				
+		        menuItemHandler.removeItem();
+		        valid = true; 
+				break;
+				
+			case "3":
+				menuItemHandler.editPrice();
+				valid = true; 
+				break;
+				
+			case "4":
+				menuItemHandler.editAvailability();
+				valid = true; 
+				break;
+
+			case "5":
+				menuItemHandler.viewMenu();
+				break;
+
+				
+			case "6":
+				return true; // go back to previous page
+				
+			default:
+	            System.out.println("Invalid choice, please select again.");
+	            break;			
+			}
+    	}
+    	
+		return false; // continue with current page 
+    }
+}
+
+
+
+=== ./staff_ui/OrderStatusHandler.java ===
+package staff_ui;
+
+// import java.util.Scanner;
+
+import db.OrderListController; 
+import orders.OrderState; 
+import orders.Order;
+
+public class OrderStatusHandler {
+	private OrderListController orderListController; 
+	private int branchId;
+	
+	public OrderStatusHandler( OrderListController orderListController, int branchId) {
+		this.orderListController = orderListController;
+		this.branchId = branchId;
+	}
+
+	public void printOrderStatus(int orderId) {
+		Order order = orderListController.getOrder(orderId);
+		if (order == null){
+			System.out.println("Order not found");
+			return;
+		}
+		else if (order.getBranchId() != this.branchId){
+			System.out.println("Order not found");
+			return;
+		}
+
+		OrderState orderStatus = order.getStatus();
+		System.out.println("Order " + orderId + " has order status: " + orderStatus);
+	}
+	
+	public void setOrderStatus(int orderId) {
+		Order order = orderListController.getOrder(orderId);
+
+		if (order == null){
+			System.out.println("Order not found");
+			return;
+		}
+
+		else if (order.getBranchId() != this.branchId){
+			System.out.println("Order not found");
+			return;
+		}
+		
+		// to check if currentstate and newstate are the same 
+		if (order.getStatus().equals(OrderState.NEW_ORDER)) {
+            order.markReady();
+			System.out.println("Order " + orderId + " is ready to be picked up.");
+			return;
+		
+		}
+		
+        System.out.println("Error: Unable to pick up order " + orderId + ". Please verify your orderId is correct.");
+        
+				
+	}
+}
+=== ./staff_ui/BranchStatusHandler.java ===
+package staff_ui;
+
+import java.util.Scanner; 
+import db.BranchDBController; // using getbranch method 
+import branch_management.Branch; 
+
+public class BranchStatusHandler {
+	private Scanner scanner; 
+	private BranchDBController branchDBController;
+	
+	public BranchStatusHandler(Scanner scanner, BranchDBController branchDBController) {
+		this.scanner = scanner; 
+		this.branchDBController = branchDBController; 
+	}
+	
+	public void changeBranchStatus(int branchId) {
+		Branch branch = branchDBController.getBranchById(branchId); // get branch instance 
+		
+		// get current branch status	
+		System.out.println("Current branch status is " + (branch.getisOpen() ? "Open" : "Closed") + ".");
+        System.out.print("Change it? (Yes/No): ");
+        String input = scanner.nextLine();
+
+        if (input.equalsIgnoreCase("yes")) {
+            // toggle the branch status
+			
+
+            branch.setOpen(!branch.getisOpen());
+            System.out.println("Branch status is changed to: " + (branch.getisOpen() ? "Open" : "Closed"));
+        } else { // if user type no 
+            System.out.println("Branch status remains unchanged.");
+        }
+	}
+}
+=== ./staff_ui/FilterCriteria.java ===
+package staff_ui;
+import users.Staff;
+import db.UserDBController;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+public class FilterCriteria {
+   
+    private UserDBController userDBController;
+    Scanner scanner;
+
+    public FilterCriteria(Scanner scanner, UserDBController userDBController) {
+        this.scanner = scanner;
+        this.userDBController = userDBController; 
+    }
+
+    public void promptFilterOptions() {
+        List<Staff> allStaff = userDBController.getAllStaff();
+
+        Set<String> uniqueRoles = allStaff.stream()
+                                          .map(staff -> String.valueOf(staff.getRole()))
+                                          .collect(Collectors.toSet());
+        Set<String> uniqueGenders = allStaff.stream()
+                                            .map(staff -> String.valueOf(staff.getGender()))
+                                            .collect(Collectors.toSet());
+        Set<String> uniqueBranches = allStaff.stream()
+                                             .map(staff -> String.valueOf(staff.getBranchId()))
+                                             .collect(Collectors.toSet());
+
+        uniqueBranches.remove("-1");
+
+        System.out.println("Choose a filter criteria:");
+        System.out.println("1. Role");
+        System.out.println("2. Gender");
+        System.out.println("3. Branch");
+        System.out.println("4. StaffId");
+        System.out.println("5. Age");        
+
+        String choice = scanner.nextLine();
+
+        Stream<Staff> staffStream = userDBController.getAllStaff().stream();
+
+        switch (choice) {
+            case "1":
+                System.out.println("Available Roles: " + uniqueRoles);
+                System.out.print("Enter role to filter by: ");
+
+                String  role = scanner.nextLine().trim();
+
+
+                if (role.equals("A") | role.equals("S") | role.equals("M")){
+                    System.out.printf("Staff members with role %s: \n", role);
+                    staffStream.filter(s -> String.valueOf(s.getRole()).equals(role))
+                           .forEach(s -> printStaff(s));
+                    return;
+                }
+
+                else {
+                    System.out.println("Invalid input. Exiting.\n");
+                    return;
+                }
+
+            case "2":
+                System.out.println("Available Genders: " + uniqueGenders);
+                System.out.print("Enter gender to filter by: ");
+                
+                String gender = scanner.nextLine().trim();
+
+                if (gender.equals("M") | gender.equals("F")){
+                    System.out.printf("%s Staff: \n", gender);
+                    staffStream.filter(s -> String.valueOf(s.getGender()).equals(gender))
+                        .forEach(s -> printStaff(s));
+
+                    return;
+                }
+                else {
+                    System.out.println("Invalid input. Exiting.\n");
+                    return;
+                }
+
+
+            case "3":
+                System.out.println("Available Branches: " + uniqueBranches);
+                System.out.print("Enter branch to filter by: ");
+                
+                String branchId = scanner.nextLine().trim();
+
+                if (uniqueBranches.contains(branchId)){  
+
+                    System.out.printf("Staff in branch in branch number %s: \n", branchId);
+
+                    staffStream.filter(s -> String.valueOf(s.getBranchId()).equals(branchId))
+                                .forEach(s -> printStaff(s));
+                }
+
+                break;
+
+            case "4":
+                System.out.print("Which Staff do you want to view?: ");
+                String staffId = scanner.nextLine();
+
+                try {  
+                    Staff staff = userDBController.getStaffByLoginId(staffId);  
+                    printStaff(staff);
+                } catch(NullPointerException e){  
+                    System.out.println("No such staff found\n");
+                    return;
+                }  
+
+                break;
+
+
+            case "5":
+                System.out.print("Enter age to filter by: ");
+                String age = scanner.nextLine();
+
+                try {  
+                    Integer.parseInt(age);  
+                  } catch(NumberFormatException e){  
+                    System.out.println("Invalid input. Exiting.\n");
+                    return;
+                  }  
+
+                System.out.printf("Staff members that are of age %s: \n", age);
+
+
+                staffStream.filter(s -> String.valueOf(s.getAge()).equals(age))
+                            .forEach(s -> printStaff(s));
+
+                break;
+
+            
+            default:
+                System.out.println("Invalid choice. Please try again.");
+                break;
+        }
+    }
+
+    private void printStaff(Staff s){
+
+        if (s.getRole() == 'A') System.out.println("\nName: " + s.getName() +  ", StaffId: " + s.getStaffId() + ", Role: " + s.getRole() + ", Gender: " + s.getGender() + ", Age: " + s.getAge());
+
+        else System.out.println("\nBranchId:" + s.getBranchId() + ", Name: " + s.getName() +  ", StaffId: " + s.getStaffId() + ", Role: " + s.getRole() + ", Gender: " + s.getGender() + ", Age: " + s.getAge());
+    }
+
+ 
+    
+
+  
+}
+=== ./staff_ui/TransferManager.java ===
+package staff_ui;
+import db.UserDBController; 
+
+
+public class TransferManager {
+	private UserDBController userDBController;
+	
+	public TransferManager( UserDBController userDBController) {
+		this.userDBController = userDBController;
+	}
+	
+	// transfer staff
+	public void transferStaff(int dstBranch, int srcBranch, String staffId) {
+		int result = userDBController.transferStaff(dstBranch, srcBranch, staffId);
+
+		switch (result){
+			case 0 : 
+			System.out.println("Transferred successfully.");
+			break;
+
+			case 1: 
+				System.out.printf("Source Branch (id: %d) has no Staff and Managers left. ", srcBranch);
+				System.out.println("\nTransfer Staff to Source Branch or close Source Branch to transfer user\n");
+				System.out.println("Error: User not transfered\n\n");
+				break;
+
+			case 2:
+				System.out.printf("Source Branch (id: %d) has no Managaers", srcBranch);
+				System.out.println("\n Transder Staff to Source Branch or Promote Staff.");
+				System.out.println("Error: User not transfered\n\n");
+				break;
+
+			case 3:
+				System.out.printf("Destination Branch (id: %d) has too many Managaers", dstBranch);
+				System.out.println("\n Transfer Staff out of Destination Branch or remove users");
+				System.out.println("Error: User not transfered\n\n");
+				break;
+
+			case 4: 
+				System.out.printf("Destination Branch (id: %d) has exceeded the staff threshold", dstBranch);
+				System.out.println("\n Transfer Staff out of Destination Branch or remove users");
+				System.out.println("Error: User not transfered\n\n");
+				break;
+
+			case 5:
+				System.out.println("Error: User not found\n\n");
+				break;
+
+			default:
+				System.out.println("Error: Invalid option\n\n");
+				break;
+			
+		}
+
+		
+		
+	}
+	
+	// assign manager 
+	public void assignManager(int branchId, String staffId) {		
+		int result = userDBController.assignManager(branchId, staffId);
+		switch(result) {
+		// 0: success
+		case 0:
+			System.out.println("Assigned successfully\n");
+			break;
+			
+		// 1: too many managers, error 
+		case 1: 
+			System.out.println("Error\n");
+        	System.out.println("Too many managers\n");
+        	break;
+        	
+        // 2: manager or staff not found, error
+   		case 2: 
+ 			System.out.println("Error\n");
+    	    System.out.println("Staff/Branch not found\n");
+    	    break;
+
+		case 3:
+			System.out.println("Error\n");
+			System.out.println(staffId + " is already a manager");
+		}
+	}
+}
+=== ./staff_ui/AccountManager.java ===
+package staff_ui;
+
+import db.UserDBController;
+import db.BranchDBController;
+
+import java.util.Scanner; 
+import users.Staff; 
+
+public class AccountManager {
+	private Scanner scanner; 
+	private UserDBController userDBController; 
+	private BranchDBController branchDBController; 
+	
+	public AccountManager(Scanner scanner, UserDBController userDBController, BranchDBController branchDBController) {
+		this.scanner = scanner; 
+		this.userDBController = userDBController;
+		this.branchDBController = branchDBController; 
+	}
+	
+	// add account	
+	public void addAccount(int branchId) {		
+		// asking user for details 
+        System.out.println("Enter Staff ID:");
+        String staffId = scanner.nextLine();
+
+        System.out.println("Enter Age:");
+        int age = scanner.nextInt();
+        scanner.nextLine(); // consume newline
+
+        System.out.println("Enter Name:");
+        String name = scanner.nextLine();
+
+        System.out.println("Enter Gender (M/F):");
+        char gender = scanner.nextLine().charAt(0);
+
+        System.out.println("Enter Role:");
+        char role = scanner.nextLine().charAt(0);
+        
+        // create user using constructor 
+     	Staff user = new Staff(staffId, name, role, gender, age, branchId);
+		
+        int result = userDBController.addStaff(user);
+        
+        switch(result) {
+        // 0: successfully added the user 
+		case 0:
+			System.out.println("Staff added successfully\n");
+			break;
+		// 1: branch has too many managers
+		case 1:
+			System.out.println("Branch has too many managers\n");
+			break;
+		// 2: branch has too many staff
+		case 2:
+			System.out.println("Branch has too many staff\\n");
+			break;
+		// 3: branch not found
+		case 3:
+			System.out.println("Branch not found\\n");
+			break;
+
+		case 4:
+			System.out.println("staffId was already taken\\n");
+			break;
+        }
+	}
+	
+	// remove account
+	public void removeAccount(String userId) {	
+		String answer;
+        int result = userDBController.removeStaff(userId);
+
+        switch(result) {
+        // 0: successfully removed the user 
+		case 0:
+			System.out.println("Staff removed successfully\n");
+			break;
+			
+		// 1: no. of staff and manager is 0: ask if wanna close branch? no -> error yes-> closebranch()
+		case 1: 
+			System.out.println("No Staff/Managers. Close branch? yes/no\n");
+			answer = scanner.nextLine();
+        	if (answer.equalsIgnoreCase("yes")) {
+        		System.out.println("Closing the branch...\n");
+        	    
+        	    // [check needed inputs] code that handles branch closure
+
+				Staff staff = userDBController.getStaffByLoginId(userId);
+
+				branchDBController.closeBranch(staff.getBranchId());
+
+        	    
+        	} else { 
+        	    System.out.println("Error: Account not deleted\n");
+        	}
+        	break;
+        	
+        // 2: theres no managers but theres staff -> prompt to promote staff.
+   		case 2: 
+ 			System.out.println("No Managers. Promote staff or transer manager to delete account\n");
+			System.out.println("Error: Account not deleted.");
+        	break;
+        	
+        // 3: staff doesnt exist in branch 
+   		case 3:
+   			System.out.println("Error: Staff does not exist in branch\n");
+   			break;
+		}
+    } 	
+}
+=== ./staff_ui/MenuItemHandler.java ===
+package staff_ui;
+
+import java.util.Scanner;
+import branch_management.Menu;
+import branch_management.Branch;
+import branch_management.FoodCategory;
+import db.BranchDBController;
+import branch_management.MenuItem;
+
+public class MenuItemHandler {
+    private Scanner scanner;
+    private Menu menu;
+
+    public MenuItemHandler(Scanner scanner, int branchId, BranchDBController branchDBController) {
+        this.scanner = scanner;
+        Branch branch = branchDBController.getBranchById(branchId);
+        this.menu = branch.getMenu();
+    }
+
+    // Method to add item
+    public void addItem() {
+        System.out.println("Adding new item");
+        System.out.println("Enter new menu item name: ");
+        String name = scanner.nextLine();
+        System.out.println("Price: ");
+        double price = scanner.nextDouble();
+        scanner.nextLine(); // consume newline
+        System.out.println("Select the Food Category:");
+        FoodCategory category = selectFoodCategory();
+        System.out.println("Enter description for the menu item:");
+        String description = scanner.nextLine();
+
+        boolean success = menu.addItem(menu.getFoodList().size() + 1, name, price, category, true, description);
+        if (success) {
+            System.out.println("Item added successfully.");
+        } else {
+            System.out.println("Failed to add item. Item with name '" + name + "' already exists.");
+        }
+    }
+
+    public void removeItem() {
+        System.out.println("Enter menu item name to be removed: ");
+        scanner.nextLine();
+        String name = scanner.nextLine();
+        boolean success = menu.removeFoodByName(name);
+        if (success) {
+            System.out.println("Item removed successfully.");
+        } else {
+            System.out.println("Failed to remove item. Item not found.");
+        }
+    }
+
+    public void editPrice() {
+        System.out.println("Enter the name of the item to edit price: ");
+        scanner.nextLine();
+        String itemName = scanner.nextLine();
+
+        System.out.println("Enter the new price: ");
+        double newPrice = scanner.nextDouble();
+        scanner.nextLine(); // consume newline left over
+
+        // Update the price
+        boolean success = menu.updateFoodPrice(itemName, newPrice);
+        if (success) {
+            System.out.println("Price of item '" + itemName + "' updated successfully to: $" + newPrice);
+        } else {
+            System.out.println("Failed to update price. Item not found.");
+        }
+    }
+
+    public void editAvailability() {
+        System.out.println("Enter the name of the item to edit availability: ");
+        scanner.nextLine();
+        String itemName = scanner.nextLine();
+
+        System.out.println("Enter the new availability (true/false): ");
+        boolean newAvailability = scanner.nextBoolean();
+        scanner.nextLine(); // consume newline left over
+
+        // Update its availability
+        MenuItem item = menu.findFoodByName(itemName);
+        if (item != null) {
+            item.setAvailable(newAvailability);
+            System.out.println("Availability of item '" + itemName + "' updated successfully to: " + newAvailability);
+        } else {
+            System.out.println("Failed to update availability. Item not found.");
+        }
+    }
+
+    // Helper method to select food category
+    public FoodCategory selectFoodCategory() {
+        while (true) {
+            System.out.println("1. BURGER");
+            System.out.println("2. SIDE");
+            System.out.println("3. DRINK");
+            System.out.println("4. SET_MEAL");
+            System.out.print("Enter your choice (1-4): ");
+            int categoryChoice = scanner.nextInt();
+            scanner.nextLine(); // consume newline left over
+            switch (categoryChoice) {
+                case 1:
+                    return FoodCategory.BURGER;
+                case 2:
+                    return FoodCategory.SIDE;
+                case 3:
+                    return FoodCategory.DRINK;
+                case 4:
+                    return FoodCategory.SET_MEAL;
+                default:
+                    System.out.println("Invalid choice. Please enter a number between 1 and 4.");
+            }
+        }
+    }
+
+    public void viewMenu(){
+        for (MenuItem food : this.menu.getFoodList()) {
+			if (food.isAvailable()) {
+				System.out.println("ID: " + food.getId() +
+						"Name: " + food.getName() +
+                        ", Price: " + food.getPrice() +
+                        ", Category: " + food.getCategory() +
+                        ", Availability: " + food.isAvailable());
+			}
+        }
+    }
+}
+=== ./staff_ui/OrderViewer.java ===
+package staff_ui;
+
+import db.OrderListController; // we use methods from this class 
+import orders.Order; 
+import orders.OrderItem;
+import orders.OrderState;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
+
+public class OrderViewer {
+	private int branchid;
+	private OrderListController orderListController; 
+	
+	public OrderViewer(int branchid, OrderListController orderListController) {
+		this.branchid = branchid; 
+		this.orderListController = orderListController;
+	}
+	
+	// view a specific order 
+	public void viewOrder(int orderid) {
+		Order order = orderListController.getOrder(orderid);
+
+		if (order != null | order.getBranchId() != this.branchid){ 
+
+			printOrderDetails(order);
+		}
+	}
+	
+	// view new orders
+	public void viewUnfinishedOrders() {
+		Order[] orders = orderListController.getUnfinishedOrders(branchid);
+		for (Order order : orders) {
+			printOrderDetails(order);
+		}
+	}
+
+	public void listOrders(){
+		for (Order order : orderListController.getAllOrders()) {
+			if (order.getBranchId() == this.branchid) {
+				System.out.println(order.getOrderId());
+			}
+        }
+	}
+	
+	// view next orders
+	public void viewNextOrder() {
+		Order order = orderListController.getNextOrder(branchid);
+		printOrderDetails(order);
+	}
+	
+	// helper function to print details 
+	public void printOrderDetails(Order order) {
+		System.out.println("Order ID: " + order.getOrderId());
+        System.out.println("Is Takeaway: " + order.getTakeaway());
+        System.out.println("Order Items:");
+        for (OrderItem item : order.getOrderItems()) {
+			System.out.println("\t" + item.toString()); 
+		}
+
+		
+        System.out.println("Status: " + order.getStatus().toString());
+
+		
+		if (!order.getStatus().equals(OrderState.NEW_ORDER)){
+			// System.out.print(order.getCancelTime());
+			System.out.println("Cancellation Time: " + String.join("  ", order.getCancelTime().toString().split("T")));
+			// System.out.println("Cancellation Time: " + order.getCancelTime().format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)));
+		}
+	}
+}
+=== ./users/Customer.java ===
+package users;
+
+import java.util.List; 
+import java.util.ArrayList; 
+
+public class Customer extends User {
+	private int branchId;
+    private List<Integer> orders;
+    
+    public Customer(int branchId) {
+        this.branchId = branchId;
+        this.orders = new ArrayList<>();
+    }
+    
+    public int getBranch() {
+    	return this.branchId; 
+    }
+    
+    public List<Integer> getOrders(){
+    	return this.orders; 
+    }
+    
+    public void addOrder(int orderId) {
+    	orders.add(orderId); // add new orderid into the orders list 
+    }
+}
+=== ./users/User.java ===
+package users;
+
+public abstract class User {
+
+}
+=== ./users/Staff.java ===
+package users;
+
+public class Staff extends User{
+	private String password = "password"; 
+	private String staffId;
+	private int branchId; 
+	private int age; 
+	private String name; 
+	private char gender;
+	private char role; 
+	
+
+	public Staff(String staffId, String name, char role, char gender, int age, int branchId){
+		this.name = name;
+		this.staffId = staffId;
+		this.role = role;
+		this.gender = gender;
+		this.age = age;
+		this.branchId = branchId;
+
+	}
+
+    public boolean checkPassword(String passwordInput) {
+        return passwordInput.equals(password); //equals returns boolean values
+    }
+
+	public void setPassword(String newPassword) {
+		this.password = newPassword; 
+	}
+
+	public String getStaffId() {
+		return this.staffId;
+	}
+	public int getBranchId() {
+		return this.branchId;
+	}
+
+	public void setBranchId(int newId){
+		this.branchId = newId;
+	}
+
+	public String getPassword(){
+		return this.password;
+	}
+
+	public int getAge() {
+		return this.age;
+	}
+	
+	public void setAge(int age) {
+		this.age = age;
+	}
+	
+	public String getName() {
+		return this.name;
+	}
+	
+	public void setName(String name) {
+		this.name = name;
+	}
+	
+	public char getGender() {
+		return this.gender;
+	}
+	
+	public void setGender(char gender) {
+		this.gender = gender;
+	}
+	
+	public char getRole() {
+		return this.role;
+	}
+	
+	public void setRole(char role) {
+		this.role = role;
+	}
+
+	public void setId(String newId){
+		this.staffId = newId;
+	}
+	
+}
+=== ./db/UserDBController.java ===
+package db;
+
+import users.Staff;
+import interfaces.DBController;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.io.FileWriter;
+
+public class UserDBController implements DBController{
+
+    private static UserDB userDB = new UserDB();
+    
+    @Override
+    public boolean readDB(String filename) {
+        try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                if(line.trim().matches("[,\\s]*")) break;
+                String[] values = line.split(",");
+
+                String name = values[0];
+                String staffId = values[1];
+                char role = values[2].charAt(0);
+                char gender = values[3].charAt(0);
+                int age = Integer.parseInt(values[4]);
+
+                int branchId;
+                if (role == 'A'){
+                    branchId = -1;
+                }
+                else{
+                    branchId = Integer.parseInt(values[6]);
+                }
+
+                Staff staffMember = new Staff(staffId, name, role, gender, age, branchId);
+
+                staffMember.setPassword(values[5]);
+
+                userDB.getStaffList().add(staffMember);
+            }
+            return true;
+        } catch (IOException e) {
+            System.out.println("Error reading staff data from file: " + e.getMessage());
+            return false;
+        }
+    }
+
+    @Override
+    public boolean writeDB(String filename){
+        List<Staff> staffList = userDB.getStaffList();
+        
+
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(filename))) {
+            for (Staff staff : staffList) {
+                List <String> line = new ArrayList<>();
+                line.add(staff.getName());
+                line.add(staff.getStaffId());
+                line.add(Character.toString(staff.getRole()));
+                line.add(Character.toString(staff.getGender()));
+                line.add(Integer.toString(staff.getAge()));
+                line.add(staff.getPassword());
+
+                if (staff.getRole() != 'A'){
+                    line.add(Integer.toString(staff.getBranchId()));
+                    
+                }
+
+                bw.write(String.join(",", line));
+                bw.newLine();
+                
+            }
+        }catch(IOException e){
+            e.printStackTrace();
+            return false;
+
+        }
+
+        return true;
+
+
+
+    }
+
+
+
+
+    public List<Staff> getAllStaff() {
+        return userDB.getStaffList();
+    }
+
+
+
+    public Staff getStaffByLoginId(String loginId) throws NullPointerException{
+
+        for (Staff staff : userDB.getStaffList()){
+            if (staff.getStaffId().equals(loginId)){
+                return staff;
+            }
+        }
+
+        throw new NullPointerException();
+    }
+
+
+    public int addStaff(Staff newStaff) {
+        try{
+        getStaffByLoginId(newStaff.getStaffId());
+            return 4;
+        }catch(NullPointerException e) {
+        }
+
+        
+        int branchId = newStaff.getBranchId();
+
+        try{
+        BranchDBController branchDBController= new BranchDBController(true);
+
+        branch_management.Branch branch = branchDBController.getBranchById(branchId);
+        branch_management.BranchHR hr = branch.getBranchHR();
+        
+
+
+        if(newStaff.getRole() == 'M'){
+            boolean attempt = hr.addManager(newStaff);
+            if (! attempt){
+                return 1;
+            }  
+        }
+
+        else{
+            boolean attempt = hr.addStaff(newStaff);
+            if (! attempt){
+                return 2;
+            }  
+        }
+    }catch(NullPointerException e){
+        return 3;
+
+    }
+
+        userDB.getStaffList().add(newStaff);
+        return 0;
+    }
+
+    public boolean updateStaffId(String staffId, String newStaffId ) {
+
+        Staff staffToUpdate = getStaffByLoginId(staffId);
+        if (staffToUpdate == null) {
+            return false;
+        }
+
+        if (getStaffByLoginId(newStaffId) == null) {
+            staffToUpdate.setId(newStaffId);
+            return true;
+        }
+        return false;
+
+    }
+
+    public int removeStaff(String loginId) {
+
+        try{
+            Staff staffToRemove = getStaffByLoginId(loginId);
+
+            int branchId = staffToRemove.getBranchId();
+
+
+            BranchDBController branchDBController= new BranchDBController(true);
+
+            branch_management.Branch branch = branchDBController.getBranchById(branchId);
+
+            if (! branch.getisOpen()){
+                userDB.getStaffList().remove(staffToRemove);   
+            }
+            branch_management.BranchHR hr = branch.getBranchHR();
+
+
+            if (hr.checkManagerisZero()){
+                if (hr.checkStaffisZero()){
+                    return 1;
+                }
+                else{
+                    return 2;
+                }
+            }
+            userDB.getStaffList().remove(staffToRemove);
+
+            return 0;
+        } 
+        
+        catch (NullPointerException e){
+            return 3;
+        }
+    }
+
+
+    public int assignManager(int branchId, String staffId){
+        try{
+            Staff staffToRemove = getStaffByLoginId(staffId);
+
+            if (staffToRemove.getRole() == 'M') return 3;
+
+
+            BranchDBController branchDBController= new BranchDBController(true);
+
+            branch_management.Branch branch = branchDBController.getBranchById(branchId);
+            branch_management.BranchHR hr = branch.getBranchHR();
+
+            if (! hr.addManager(staffToRemove)){
+                return 1;
+            }
+            userDB.getStaffList().remove(staffToRemove);
+
+            return 0;
+        } 
+        
+        catch (NullPointerException e){
+            return 2;
+        }
+
+    }
+
+    public int transferStaff(int dst, int src, String staffId){
+        Staff staffToRemove;
+        try{
+            staffToRemove = getStaffByLoginId(staffId);
+
+            if(staffToRemove.getBranchId() != src){
+                return 6;
+            }
+        }catch(NullPointerException e){
+            return 6;
+        }
+
+        try{
+
+            BranchDBController branchDBController= new BranchDBController(true);
+
+            branch_management.Branch srcBranch = branchDBController.getBranchById(src);
+            branch_management.Branch dstBranch = branchDBController.getBranchById(dst);
+            branch_management.BranchHR srchr = srcBranch.getBranchHR();
+            branch_management.BranchHR dsthr = dstBranch.getBranchHR();
+
+            if ( staffToRemove.getRole() == 'M' && srchr.checkManagerisZero()){
+                if (srchr.checkStaffisZero()){
+                    return 1;
+                }
+                else{
+                    return 2;
+                }
+            }
+
+
+            else{
+                if (staffToRemove.getRole() == 'M'){
+                    boolean attempt = dsthr.addManager(staffToRemove);
+                    if (!attempt){
+                        return 3;
+                    }
+                }
+
+                else {
+                    boolean attempt = dsthr.addStaff(staffToRemove);
+                    if (!attempt){
+                        return 4;
+                    }
+                }
+            }
+
+            staffToRemove.setBranchId(dst);
+
+            return 0;
+        } 
+        
+        catch (NullPointerException e){
+            return 5;
+        }
+    }
+}
+=== ./db/OrderChecker.java ===
+package db;
+
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+
+import orders.Order;
+
+public class OrderChecker extends TimerTask {
+    private static OrderChecker instance;
+    private OrderListController orderListController;
+    private Timer timer;
+
+    private OrderChecker(OrderListController orderListController) {
+        this.orderListController = orderListController;
+    }
+
+    public static synchronized OrderChecker getInstance(OrderListController orderListController) {
+        if (instance == null) {
+            instance = new OrderChecker(orderListController);
+            instance.startChecker();
+        }
+        return instance;
+    }
+
+    private void startChecker() {
+        this.timer = new Timer(true);
+        this.timer.scheduleAtFixedRate(this, 0, 60000); // Check every minute
+    }
+
+    @Override
+    public void run() {
+        List <Order> orders = orderListController.getAllOrders();
+        for (Order order : orders) {
+            order.checkOrderStatus();
+        }
+    }
+
+    public void stopChecker() {
+        if (this.timer != null) {
+            this.timer.cancel();  // This stops the timer and cancels scheduled tasks
+        }
+    }
+}
+=== ./db/OrderListController.java ===
+package db;
+import orders.*;
+import java.util.*;
+
+import java.io.IOException;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
+
+public class OrderListController implements interfaces.DBController{
+    // private static OrderList orderList = new OrderList();
+    private OrderList orderList = new OrderList();
+    private BranchDBController branchDBController; 
+
+    public OrderListController(BranchDBController branchDBController){
+        this.branchDBController = branchDBController;
+    }
+
+
+    public int createOrder(Cart cart, boolean isTakeaway, int branchId) {
+        Order newOrder = new Order(branchId, isTakeaway, cart);
+
+        this.addOrder(newOrder.getOrderId(), newOrder);
+
+        return newOrder.getOrderId();
+    }
+
+
+
+    public boolean addOrder(int orderId, Order order){
+
+        if (orderList.getOrder(orderId) != null){
+            return false;
+        }
+
+        orderList.dumpList().put(orderId, order);
+
+        List <Order> orders = orderList.getBranchOrders().get(order.getBranchId());
+
+        if (orders == null){
+            orderList.getBranchOrders().put(order.getBranchId(), new ArrayList<>());
+            orders = orderList.getBranchOrders().get(order.getBranchId());
+        }
+        orders.add(order);
+
+
+        return true;
+
+
+    }
+
+    public Order getOrder(int orderId) {
+        return orderList.getOrder(orderId);
+    }
+
+    public List<Order> getAllOrders(){
+        List<Order> orders = new ArrayList<>(orderList.dumpList().values());
+        return orders;
+    }
+
+    public Order[] getUnfinishedOrders(int branchId) {
+        List<Order> branchOrderList = orderList.getBranchOrders().get(branchId);
+        return branchOrderList.stream()
+                .filter(order -> order.getStatus().equals(OrderState.NEW_ORDER)) // Changed from getOrderState() to getStatus()
+                .toArray(Order[]::new);
+    }
+    
+    public Order getNextOrder(int branchId) {
+        List<Order> branchOrderList = orderList.getBranchOrders().get(branchId);
+        return branchOrderList.stream()
+                .filter(order -> order.getStatus().equals(OrderState.NEW_ORDER)) // Changed from getOrderState() to getStatus()
+                .findFirst()
+                .orElse(null);
+    }
+    
+    @Override
+    public boolean writeDB(String filename) {
+
+        HashMap<Integer, Order> orders = orderList.dumpList();
+        String[] line = new String[7];
+
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(filename))) {
+            for (Order order : orders.values()) {
+                line[0] = Integer.toString(order.getBranchId());
+                line[1] = Integer.toString(order.getOrderId());
+                line[2] = order.getTakeaway() ? "1" : "0";
+
+
+                line[3] = order.getStatus().name();
+
+                line[4] = Double.toString(order.getPrice());
+
+                List <String> itemStrings = new ArrayList<>();
+               
+
+
+                for( OrderItem orderItem: order.getOrderItems()) {
+                	String[] itemDetails = new String[3]; 
+                    
+                    itemDetails[0] = Integer.toString(orderItem.getId());
+
+
+                    itemDetails[1] = Integer.toString(orderItem.getQuantity());
+
+                    itemDetails[2] = String.join(";", orderItem.getCustomisation());
+
+                    if (itemDetails[2] == ""){
+                        itemDetails[2] = "None";
+                    }
+
+
+                    itemStrings.add(String.join("-", itemDetails));
+                
+                }
+
+                line[5] = String.join(":", itemStrings);
+
+                if (order.getStatus() != OrderState.NEW_ORDER){
+                    line[6] = order.getCancelTime().toString();
+                }
+
+                else{
+                    line[6] = "";
+                }
+
+                for (String data : line){
+                    bw.write(data);
+                    bw.write(",");
+                }
+                bw.newLine();
+            }
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+
+    @Override
+    public boolean readDB(String filename) {
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(filename));
+            
+            String line;
+
+
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(",");
+                int branchId = Integer.parseInt(parts[0].trim());
+
+                
+                branch_management.Menu menu = branchDBController.getBranchById(branchId).getMenu();
+
+
+                int orderId = Integer.parseInt(parts[1].trim());
+
+                boolean isTakeAway = parts[2].trim() == "1";
+
+                OrderState orderState = OrderState.valueOf(parts[3].trim());
+                double price = Double.parseDouble(parts[4].trim());
+
+                String itemStrings = parts[5].trim();
+
+                String[] itemStringArr = itemStrings.split(":");
+                List<OrderItem> orderItems = new ArrayList<>();
+
+                for (String itemString : itemStringArr){
+                    String[] itemDetails = itemString.split("-");
+
+                    branch_management.MenuItem item = menu.findItemByNo(Integer.parseInt(itemDetails[0].trim()));
+
+
+                    int quantity = Integer.parseInt(itemDetails[1].trim());
+
+                    List <String> customisations;
+
+                    
+                    customisations = Arrays.asList(itemDetails[2].split(";"));
+                    
+
+
+                    OrderItem orderItem = new OrderItem(item, customisations, quantity);
+
+                    orderItems.add(orderItem);
+
+                }
+                
+
+                Order order = new Order(branchId, orderId, isTakeAway, orderState, price, orderItems);
+                
+                if (orderState != OrderState.NEW_ORDER){
+                    String cancelTime = parts[6].trim();
+                  order.setCancelTime(cancelTime);
+                }
+                
+                this.addOrder(orderId, order);
+            }
+
+
+
+            reader.close();
+            return true;
+        } catch (IOException  e) {
+            e.printStackTrace();
+            return false;
+        }   
+
+    }
+
+}=== ./db/BranchDBController.java ===
+package db;
+
+import java.io.*;
+import java.util.*;
+import branch_management.*;
+
+
+public class BranchDBController {
+    private static BranchDB branchDB;
+
+    public BranchDBController(){
+        branchDB = new BranchDB();
+    }
+
+    public BranchDBController(boolean doNotOverwrite){
+    }
+
+    public HashMap<Integer, String> getAllBranches() {
+        return branchDB.getIdToNameMap();
+    }
+
+    public HashMap<Integer, String> getOpenBranches(){
+        HashMap<Integer, String> openBranches = new HashMap<>();
+
+        List <Branch> branches = branchDB.getBranchList();
+
+        for (Branch branch : branches){
+            if (branch.getisOpen()){
+                openBranches.put(branch.getBranchId(), branch.getBranchName());
+            }
+        }
+        return openBranches;
+
+        
+        
+    }
+
+    public Branch getBranchById(int branchId) throws NullPointerException{
+        // Return branch object from list matching the branch ID
+        return branchDB.getBranchList().stream()
+                         .filter(branch -> branch.getBranchId() == branchId)
+                         .findFirst()
+                         .orElseThrow(() -> new NullPointerException());
+    }
+
+    public String getBranchNameById(int branchId) {
+        // Return branch name from map by branch ID
+        return branchDB.getIdToNameMap().get(branchId);
+    }
+
+    public void setBranchName(int branchId, String branchName) {
+        // Update branch name in map
+        getAllBranches().put(branchId, branchName);
+        // Update branch name in list of branch objects
+        branchDB.getBranchList().stream()
+                  .filter(branch -> branch.getBranchId() == branchId)
+                  .findFirst()
+                  .ifPresent(branch -> branch.setBranchName(branchName));
+    }
+
+    public void addBranch(Branch branch) {
+        branchDB.addBranch(branch);
+    }
+
+    
+    public boolean closeBranch(int branchId){
+        try{
+            Branch branch = this.getBranchById(branchId);
+            branch.setOpen(false);
+            return true;
+        }
+        catch (NullPointerException e){
+            return false;
+        }
+    }
+
+
+    public int openBranch(int branchId){
+        Branch branch;
+
+        try{
+            branch = this.getBranchById(branchId);
+        }catch (NullPointerException e){
+            return 1;
+        }
+
+        BranchHR branchHR = branch.getBranchHR();
+
+        if (branchHR.getNoManagers() == 0){
+            return 2;
+        }
+
+        branch.setOpen(true);
+        return 0;
+
+    }
+
+    public boolean writeDB(String filename) {
+
+        List<Branch> branchList = branchDB.getBranchList();
+        String[] line = new String[8];
+
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(filename))) {
+            for (Branch branch : branchList) {
+
+                line[0] = Integer.toString(branch.getBranchId());
+                line[1] = branch.getBranchName();
+                line[2] = branch.getLocation();
+
+
+                line[3] = Integer.toString(branch.getBranchHR().getStaffQuota());
+
+                line[5] =  branch.getisOpen() ? "1" : "0";
+                line[6] = Integer.toString(branch.getBranchHR().getNoStaff());
+                line[7] = Integer.toString(branch.getBranchHR().getNoManagers());
+
+                Menu menu = branch.getMenu();
+
+                String menuDetails = "";
+
+                for( MenuItem menuItem: menu.getFoodList()) {
+                	String[] itemDetails = new String[6]; 
+                    
+                    itemDetails[0] = Integer.toString(menuItem.getId());
+
+                    FoodCategory foodcat = menuItem.getCategory();
+
+                    itemDetails[1] = foodcat.name();
+
+                    itemDetails[2] = menuItem.getName();
+
+                    itemDetails[3] = Double.toString(menuItem.getPrice());
+
+                    itemDetails[4] = menuItem.isAvailable() ? "1" : "0";
+
+                    itemDetails[5] = menuItem.getDescription().replace(',', '*');
+
+                    if (menuDetails == ""){
+                        menuDetails = String.join(":", itemDetails);
+                    }
+                    
+                    else{
+                        menuDetails = menuDetails + ";" + String.join(":", itemDetails);
+                    }
+                
+                }
+
+                line[4] = menuDetails;
+
+                for (String data : line){
+                    bw.write(data);
+                    bw.write(",");
+                }
+                bw.newLine();
+            }
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean readDB(String filename) {
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(filename));
+            
+            String line;
+
+
+            while ((line = reader.readLine()) != null) {
+
+                if(line.trim().matches("[,\\s]*")) break;
+
+
+                String[] parts = line.split(",");
+                int branchId = Integer.parseInt(parts[0].trim());
+                String name = parts[1].trim();
+                String location = parts[2].trim();
+                int staffQuota = Integer.parseInt(parts[3].trim());
+                String menuDetails = parts[4].trim();
+
+                boolean isOpen = parts[5].trim().equals("1");
+
+                int noStaff = Integer.parseInt(parts[6].trim());
+
+                int noManager = Integer.parseInt(parts[7].trim());
+
+
+                
+                Branch branch = new Branch(branchId, name, staffQuota, location, isOpen, noStaff, noManager);
+                
+                String[] menuItems = menuDetails.split(";");
+
+                Menu menu = branch.getMenu();
+                		
+                for(String menuItem : menuItems) {
+                    
+                	String[] itemDetails = menuItem.split(":");
+                	int itemId = Integer.parseInt(itemDetails[0].trim());
+                	String category = itemDetails[1].trim();
+
+                    FoodCategory foodcat = FoodCategory.valueOf(category);
+
+                    String itemName = itemDetails[2].trim();
+
+                    double price = Double.parseDouble(itemDetails[3].trim());
+
+                    boolean availability = "1".equals(itemDetails[4].trim());
+                    String description = itemDetails[5].trim().replace('*', ',');
+
+
+                    menu.addItem(itemId, itemName, price, foodcat, availability, description);
+                
+                }
+                
+
+                this.addBranch(branch);
+
+            }
+            reader.close();
+            return true;
+        } catch (IOException  e) {
+            e.printStackTrace();
+            return false;
+        }
+
+        
+
+    }
+}=== ./db/PaymentMethodDBController.java ===
+package db;
+
+
+import interfaces.*;
+import java.io.*;
+import orders.PaymentMethodEnum;
+
+public class PaymentMethodDBController implements DBController{
+    private static PaymentMethodDB paymentMethodDB = new PaymentMethodDB();
+
+    @Override
+    public boolean readDB(String filename){
+        try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
+            String line;
+            
+            while ((line = br.readLine()) != null) {
+                if(line.trim().matches("[,\\s]*")) break;
+                String[] values = line.split(",");
+
+                paymentMethodDB.getAvailablePayment().put(values[0], Integer.parseInt(values[1]));
+            }}catch (IOException e){
+                return false;
+            }
+
+            return true;
+
+    }
+
+    @Override
+    public boolean writeDB(String filename){
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(filename))) {
+            // String[] line = new String[6];
+
+            
+            for (String paymentString : paymentMethodDB.getAvailablePayment().keySet()) {
+                PaymentMethodEnum paymentMethod = PaymentMethodEnum.valueOf(paymentString);
+
+                switch (paymentMethod) {
+                    case PaynowPayment:
+                        bw.write("PaynowPayment");
+                        break;
+                    case CreditCardPayment:
+                        bw.write("CreditCardPayment");
+                        break;
+                    default:
+                        bw.write("PayPal"); 
+                        break;
+                }
+                bw.write(",");
+                bw.write(this.isAvailable(paymentMethod) ? "1" : "0");
+                bw.newLine();
+
+            }
+        }catch(IOException e){
+            e.printStackTrace();
+            return false;
+
+        }
+
+        return true;
+
+
+
+    }
+
+    public boolean isAvailable(PaymentMethodEnum paymentMethodEnum){
+        return paymentMethodDB.getAvailablePayment().get(paymentMethodEnum.toString()) == 1;
+    }
+
+
+    public void setAvailable(PaymentMethodEnum paymentMethodEnum, int status){
+        paymentMethodDB.getAvailablePayment().put(paymentMethodEnum.toString(), status);
+    }
+
+
+
+
+    
+}
+=== ./db/UserDB.java ===
+package db;
+
+import java.util.List;
+import users.Staff;
+import java.util.ArrayList;
+
+public class UserDB{
+    private List<Staff> staffList = new ArrayList<>();
+    
+    public List<Staff> getStaffList(){
+        return staffList;
+    }
+
+}
+=== ./db/PaymentMethodDB.java ===
+package db;
+
+import java.util.HashMap;
+
+
+//hash map of payment method to boolean --> payment method and whether it is activated 
+// return payment status then get payment method and return a boolean 
+// 
+
+public class PaymentMethodDB {
+    HashMap <String, Integer> availablePayments = new HashMap<>();
+
+    public HashMap <String, Integer> getAvailablePayment(){
+        return availablePayments;
+    }
+    
+    
+
+}
+=== ./db/BranchDB.java ===
+package db;
+
+import java.util.*;
+import branch_management.Branch;
+
+public class BranchDB{
+	
+    private HashMap<Integer, String> branchIdToNameMap;
+    private List<Branch> branchList;
+    public BranchDB() {
+        this.branchIdToNameMap = new HashMap<>();
+        this.branchList = new ArrayList<>();
+    }
+
+    public void addBranch(Branch branch) {
+        // Add branch object to list
+        branchList.add(branch);
+        // Map branch ID to branch name
+        branchIdToNameMap.put(branch.getBranchId(), branch.getBranchName());
+    }
+
+    public List<Branch> getBranchList() {
+        return branchList;
+    }
+
+    
+    public HashMap<Integer, String> getIdToNameMap(){
+    	return branchIdToNameMap;
+    }
+
+}
+
+=== ./db/OrderList.java ===
+package db;
+
+import orders.*;
+import java.util.HashMap;
+import java.util.List;
+
+class OrderList {
+
+    private HashMap<Integer, Order> orders;
+    private HashMap<Integer, List<Order>> branchOrders;
+
+    public OrderList() {
+        orders = new HashMap<>();
+        branchOrders = new HashMap<>();
+
+    }
+
+    
+
+    public Order getOrder(int orderId) {
+        return orders.get(orderId);
+    }
+
+    public HashMap<Integer, List<Order>> getBranchOrders() {
+        return branchOrders;
+    }
+
+    public HashMap<Integer, Order> dumpList(){
+        return orders;
+    }
+
+}=== ./orders/Order.java ===
+package orders;
+
+import java.util.List;
+
+import java.time.LocalDateTime;
+
+
+
+
+public class Order {
+	
+	
+    private static int highestId = 0;
+	private int orderId;
+    private boolean isTakeaway;
+    private List<OrderItem> orderItems;
+    private OrderState status;
+    private double totalPrice;
+	private int branchId;
+
+	private LocalDateTime cancellationTime;
+   
+    
+	public Order(int branchId, boolean isTakeaway, Cart cart) {
+		this.orderId = highestId++;
+		this.isTakeaway = isTakeaway;
+		this.orderItems = cart.getItems(); 
+		this.status = (OrderState.NEW_ORDER);
+		this.totalPrice = cart.getTotalCost();
+		this.branchId = branchId;
+		
+    }
+
+	public Order(int branchId,int id,  boolean isTakeAway,OrderState orderState, double price, List <OrderItem> orderItems){
+		this.branchId = branchId;
+		this.isTakeaway = isTakeAway;
+		this.totalPrice = price;
+		this.orderId = id;
+		this.status = orderState;
+
+		if (id >= highestId){
+			highestId = id + 1;
+		}
+		this.orderItems = orderItems;
+
+	}
+
+	public LocalDateTime getCancelTime(){
+		return cancellationTime;
+	}
+
+	public void setCancelTime(String time){
+		this.cancellationTime = LocalDateTime.parse(time);
+
+	}
+
+
+
+	public void checkOrderStatus() {
+		if (cancellationTime != null && LocalDateTime.now().isAfter(cancellationTime) && this.status == OrderState.READY_TO_PICKUP) {
+			this.setStatus(OrderState.CANCELLED);
+		}
+	}
+	
+
+
+	
+	
+	// mark order as ready 
+	public void markReady() {
+		this.status = OrderState.READY_TO_PICKUP; 
+		
+		this.cancellationTime = LocalDateTime.now().plusMinutes(3);
+	}
+		
+	// return List of Order Items
+    public List<OrderItem> getOrderItems() {
+        return orderItems;
+    }
+
+	
+	public int getOrderId() {
+		return orderId;
+	}
+	
+	
+	public boolean getTakeaway() {
+		return isTakeaway;
+	}
+	
+	
+	public OrderState getStatus() {
+		return status;
+	}
+	
+	
+	public void setStatus(OrderState status) {
+		this.status = status;
+	}
+	
+	public double getPrice() {
+		return this.totalPrice;
+	}
+
+	public int getBranchId(){
+		return this.branchId;
+	}
+}
+
+=== ./orders/OrderItem.java ===
+package orders;
+
+// import branch_management.FoodCategory;
+import branch_management.FoodItem;
+import branch_management.MenuItem;
+
+import java.util.*;
+
+public class OrderItem extends FoodItem{
+	private List <String> customisation;
+	private int quantity;
+	private double totalPrice;
+	
+	
+	
+	public OrderItem(MenuItem item, List <String> customisation, int quantity) {
+		super(item);
+		
+		this.totalPrice = item.getPrice() * quantity;
+		this.customisation = customisation;
+		this.quantity = quantity;
+	}
+	
+	
+	public int getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(int quantity) {
+        this.quantity = quantity;
+        this.totalPrice = super.getPrice() * quantity;
+    }
+    
+    @Override
+    public double getPrice() {
+        return totalPrice;
+    }
+    
+    public List<String> getCustomisation() {
+		return customisation;
+	}
+
+	public void addCustomisation(String customisation) {
+		this.customisation.add(customisation);
+	}
+	
+	
+
+	@Override
+    // useful for debugging 
+    public String toString() {
+
+
+        String customisationString = String.join(" ; ", customisation);
+
+
+        return "OrderItem{" +
+        "food=" + super.getName() +
+        ", quantity=" + quantity +
+        String.format(", totalPrice=%.2f", totalPrice) + ", customisations=" + customisationString + '}';
+    }
+}	=== ./orders/PayPalDetails.java ===
+package orders;
+
+import java.util.regex.Pattern;
+import interfaces.PaymentDetails;
+
+public class PayPalDetails implements PaymentDetails{
+
+    private String email;
+    private String password;
+
+    
+    public PayPalDetails(String email, String password){
+        this.email = email;
+        this.password = password;
+    }
+
+    private boolean isValidEmail() {
+        String emailRegex = "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$";
+        Pattern pattern = Pattern.compile(emailRegex);
+        return pattern.matcher(email).matches();
+    }
+
+    private boolean isValidPassword() {
+        return this.password.length() >= 3; 
+    }
+
+    public String getEmail(){
+        return email;
+    }
+
+    public boolean validatePayment(){
+        if (isValidEmail() && isValidPassword()){
+            return true;
+        }
+        return false;
+
+    }
+}
+=== ./orders/OrderState.java ===
+package orders;
+
+public enum OrderState {
+	READY_TO_PICKUP, NEW_ORDER, COMPLETED, CANCELLED
+}
+=== ./orders/Payment.java ===
+package orders;
+
+import interfaces.PaymentDetails;
+import interfaces.PaymentMethod;
+
+// import db.BranchDBController;
+
+public class Payment {
+	
+	private Cart cart;
+	
+	public Payment(Cart c) {
+		cart = c;
+	}
+		
+
+	
+	
+    public boolean processPayment(PaymentMethod paymentMethod, PaymentDetails paymentDetails) throws UnsupportedOperationException{
+            
+    	double totalAmount = cart.getTotalCost();
+        boolean paymentSuccessful;
+       
+    	System.out.println("Processing Paynow payment of $" + cart.getTotalCost());
+
+        paymentSuccessful = paymentMethod.processPayment(totalAmount, paymentDetails);
+        
+        return paymentSuccessful;
+
+    }
+    
+    
+    
+    
+    
+ 
+    
+}=== ./orders/PaymentMethodEnum.java ===
+package orders;
+
+public enum PaymentMethodEnum {
+    PaynowPayment, CreditCardPayment, PayPal
+}
+=== ./orders/PaynowDetails.java ===
+package orders;
+
+import interfaces.PaymentDetails;
+
+public class PaynowDetails implements PaymentDetails{
+
+}
+=== ./orders/OrderList.java ===
+package orders;
+
+import java.io.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+
+public class OrderList implements Serializable {
+    private static final long serialVersionUID = 1L;
+    private transient AtomicInteger lastId;
+    private HashMap<Integer, Order> orders;
+    private HashMap<Integer, List<Order>> branchOrders;
+
+    public OrderList() {
+        lastId = new AtomicInteger(0);
+        orders = new HashMap<>();
+        branchOrders = new HashMap<>();
+    }
+
+    public OrderState getOrderStatus(int orderId) {
+        Order order = orders.get(orderId);
+        return order != null ? order.getStatus() : null;
+    }
+
+    public void setOrderStatus(int orderId, OrderState newState) {
+        Order order = orders.get(orderId);
+        if (order != null) {
+            order.setStatus(newState);
+        }
+    }
+
+    public int createOrder(Cart cart, boolean isTakeaway, int branchId) {
+        int orderId = lastId.incrementAndGet();
+        Order newOrder = new Order(branchId, isTakeaway, cart);
+        orders.put(orderId, newOrder);
+
+        List<Order> branchOrderList = branchOrders.computeIfAbsent(branchId, k -> new ArrayList<>());
+        branchOrderList.add(newOrder);
+
+        return orderId;
+    }
+
+    public Order getOrder(int orderId) {
+        return orders.get(orderId);
+    }
+
+    public List<Order> getUnfinishedOrders(int branchId) {
+        List<Order> branchOrderList = branchOrders.getOrDefault(branchId, new ArrayList<>());
+        return branchOrderList.stream()
+                              .filter(order -> order.getStatus() != OrderState.COMPLETED)
+                              .collect(Collectors.toList());
+    }
+
+    public void writeDB(String filename) throws IOException {
+        try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(filename))) {
+            out.writeObject(this);
+        }
+    }
+
+    public static OrderList readDB(String filename) throws IOException, ClassNotFoundException {
+        try (ObjectInputStream in = new ObjectInputStream(new FileInputStream(filename))) {
+            OrderList orderList = (OrderList) in.readObject();
+            orderList.lastId = new AtomicInteger(orderList.orders.keySet().stream().max(Integer::compare).orElse(0));
+            return orderList;
+        }
+    }
+
+    private void readObject(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+        ois.defaultReadObject();
+        lastId = new AtomicInteger(orders.keySet().stream().max(Integer::compare).orElse(0));
+    }
+}
+=== ./orders/PayPal.java ===
+package orders;
+
+import interfaces.PaymentDetails;
+import interfaces.PaymentMethod;
+
+public class PayPal implements PaymentMethod{
+
+
+    public boolean processPayment(double amount, PaymentDetails paymentDetails) throws NullPointerException{
+    	
+    	if (paymentDetails == null) {
+            throw new NullPointerException("Email details are required for Paypal payment.");
+        }
+    	
+    	if (paymentDetails instanceof PayPalDetails) {
+    		return true;
+
+    	}
+    	else {
+    		throw new NullPointerException("Error: Programmer Skill Issue");
+	}
+    	}
+
+   
+}
+=== ./orders/PaynowPayment.java ===
+package orders;
+
+import javax.swing.*;
+
+import interfaces.PaymentDetails;
+import interfaces.PaymentMethod;
+
+import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+
+
+public class PaynowPayment implements PaymentMethod{
+
+    // Adding a boolean to track if the close button was explicitly clicked
+    private static boolean paymentSuccessful = false;
+
+    
+    @Override
+    public boolean processPayment(double amount, PaymentDetails p) {
+        // Assuming p is correctly an instance of PaynowDetails, which it should be.
+        if (!(p instanceof PaynowDetails)) {
+            System.out.println("Invalid payment details provided.");
+            return false;
+        }
+    	
+    	
+    	JFrame frame = new JFrame("Payment Required");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(700, 700);
+        frame.setLocationRelativeTo(null);
+        frame.setVisible(false);
+
+
+    	
+        JDialog dialog = new JDialog(frame, "Pay Now", true);
+        
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE); // Control the window closing manually
+        dialog.setSize(600, 600);
+        dialog.setLayout(new BorderLayout());
+
+        try {
+        
+	        ImageIcon icon = new ImageIcon(PaynowPayment.class.getResource("/resources/paynow_qr_code.jpg"));
+	        JLabel label = new JLabel(icon);
+	        dialog.add(label, BorderLayout.CENTER);
+        }
+	    catch(Exception NullPointerException) {
+	    	System.out.println("Paynow service is down. Please choose another payment method.");
+	    	return false;
+	    }
+        
+        
+
+        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        
+        JButton closeButton = new JButton("Close");
+        
+        try {
+        	closeButton.setIcon(new ImageIcon(PaynowPayment.class.getResource("/resources/pay_button.jpg")));
+	        closeButton.setPreferredSize(new Dimension(255, 50));  // Explicitly set the button size
+	        closeButton.setMargin(new Insets(0, 0, 0, 0));
+	        closeButton.setBorderPainted(false);
+        }
+        catch(Exception NullPointerException) {
+        	closeButton.setText("Payment made");
+        	closeButton.setFont(new Font("Arial", Font.BOLD, 28));
+        }
+        
+        
+        
+        closeButton.addActionListener(e -> {
+            paymentSuccessful = true;
+            dialog.dispose();
+            frame.dispose();
+        });
+        bottomPanel.add(closeButton);
+        dialog.add(bottomPanel, BorderLayout.SOUTH);
+
+        dialog.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                paymentSuccessful = false; // Set to false if the window is closed without clicking the button
+                dialog.dispose();
+                frame.dispose();
+            }
+        });
+
+        dialog.setLocationRelativeTo(frame);
+        dialog.setVisible(true); // This will block until the dialog is closed
+        
+     
+
+        return paymentSuccessful; // Return true if close button was clicked, false otherwise
+    }
+}
+=== ./orders/Cart.java ===
+package orders;
+
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class Cart {
+    private List<OrderItem> items;
+    
+    // private String sessionId;
+
+    public Cart() {
+        items = new ArrayList<>();
+        // this.sessionId = sessionId;
+    }
+
+    public void addItem(OrderItem item) {
+        items.add(item);
+    }
+
+    public boolean removeItem(int itemId) {
+    	
+    	if(itemId > items.size() || itemId <= 0) {
+    		return false;
+		}
+    	
+        items.remove(itemId - 1);
+        return true;
+    }
+    
+    
+    public List<OrderItem> getItems() {
+        return items;
+    }
+
+    public double getTotalCost() {
+    	
+        double total = 0.0;
+        for (OrderItem item : items) {
+            total += item.getPrice();
+        }
+        return total;
+    }
+
+    public void clearCart() {
+        items.clear();
+    }
+    
+    // public String getSessionId() {
+    // 	return this.sessionId;
+    // }
+    
+}
+=== ./orders/CreditCardPayment.java ===
+package orders;
+
+import interfaces.PaymentDetails;
+import interfaces.PaymentMethod;
+
+public class CreditCardPayment implements PaymentMethod {
+    
+	@Override
+    public boolean processPayment(double amount, PaymentDetails paymentDetails) throws NullPointerException{
+    	
+    	if (paymentDetails == null) {
+            throw new NullPointerException("Credit card details are required for credit card payment.");
+        }
+    	
+    	if (paymentDetails instanceof CreditCardDetails) {
+    		return true;
+
+    	}
+    	else {
+    		throw new NullPointerException("Error: Programmer Skill Issue");
+	}
+    	}
+    	
+    
+  
+}=== ./orders/CreditCardDetails.java ===
+package orders;
+
+import interfaces.PaymentDetails;
+
+public class CreditCardDetails implements PaymentDetails{
+    private String name;
+    private String cardNumber;
+    private String expiryDate;
+    private String cvv;
+
+    public CreditCardDetails(String name, String cardNumber, String expiryDate, String cvv) {
+        this.name = name;
+        this.cardNumber = cardNumber;
+        this.expiryDate = expiryDate;
+        this.cvv = cvv;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getCardNumber() {
+        return cardNumber;
+    }
+
+    public String getExpiryDate() {
+        return expiryDate;
+    }
+
+    public String getCvv() {
+        return cvv;
+    }
+
+    public static boolean validateDetails(CreditCardDetails cardDetails) {
+        // Credit card number validation (assuming 16 digits)
+        if (cardDetails.getCardNumber().length() != 16) {
+            return false;
+        }
+
+        String expiryDate = cardDetails.getExpiryDate();
+        if (expiryDate.length() != 5 || !expiryDate.matches("\\d{2}/\\d{2}")) {
+            return false;
+        }
+
+        if (cardDetails.getCvv().length() != 3) {
+            return false;
+        }
+        return true;
+    }
+}=== ./main/MainApplication.java ===
+package main;
+
+import customer_ui.CustomerMainPage;
+import staff_ui.*;
+import users.*;
+import login_system.LoginPage;
+import db.*;
+import java.util.Scanner;
+
+
+public class MainApplication {
+
+    private static String userDBFile = "resources/staff_list.csv";
+    private static String branchDBFile = "resources/branch_list.csv";
+    private static String orderListFile = "resources/orderlist.csv";
+    private static String paymentDBFile = "resources/payment.csv";
+
+    public static void main (String[] args){
+        UserDBController userDBController = new UserDBController();
+        userDBController.readDB(userDBFile);
+
+        
+
+        BranchDBController branchDBController = new BranchDBController();
+        branchDBController.readDB(branchDBFile);
+
+        
+
+        OrderListController orderListController = new OrderListController(branchDBController);
+        orderListController.readDB(orderListFile);
+
+        OrderChecker checker = OrderChecker.getInstance(orderListController);
+        
+        
+
+        PaymentMethodDBController paymentMethodDBController = new PaymentMethodDBController();
+        paymentMethodDBController.readDB(paymentDBFile);
+
+
+        Scanner scanner = new Scanner(System.in);
+
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("Shutting down...");
+            checker.stopChecker();  
+            userDBController.writeDB(userDBFile);
+            paymentMethodDBController.writeDB(paymentDBFile);
+            branchDBController.writeDB(branchDBFile);
+            orderListController.writeDB(orderListFile);
+            scanner.close();
+        }));
+
+
+        
+
+        LoginPage loginPage = new LoginPage(scanner, userDBController, branchDBController);
+
+
+        while (true){
+            boolean working = loginPage.genUI();
+            scanner.nextLine();
+
+            if (working){
+                User user = loginPage.getUser();
+
+
+                if (user instanceof Customer){
+                    CustomerMainPage customerMainPage = new CustomerMainPage(scanner, paymentMethodDBController, (Customer) user, branchDBController, orderListController);
+
+                    customerMainPage.genUI();
+                }
+
+                else{
+                    Staff staff = (Staff) user;
+
+                    if (staff.getRole() == 'M'){
+                        ManagerPage managerPage = new ManagerPage(scanner, staff, orderListController, userDBController, branchDBController);
+
+                        managerPage.genUI();
+                    }
+
+                    else if (staff.getRole() == 'A'){
+                        AdminPage adminPage = new AdminPage(scanner, staff, userDBController, branchDBController, paymentMethodDBController);
+                        adminPage.genUI();
+                    }
+
+                    else{
+                        BranchStaffPage branchStaffPage = new BranchStaffPage(scanner, staff, orderListController);
+                        branchStaffPage.genUI();
+                    }
+            
+                }
+            }
+            else{
+                break;
+            }
+            scanner.nextLine();
+        }
+
+
+        scanner.close();
+        
+
+
+    }
+    
+}
+=== ./interfaces/UserInterface.java ===
+package interfaces;
+
+public interface UserInterface {
+	
+	public boolean genUI();
+
+}
+=== ./interfaces/DBController.java ===
+package interfaces;
+
+public interface DBController {
+
+	public boolean readDB(String filename);
+	public boolean writeDB(String filename);
+}=== ./interfaces/PaymentDetails.java ===
+package interfaces;
+
+public interface PaymentDetails {
+
+}
+=== ./interfaces/PaymentMethod.java ===
+package interfaces;
+
+public interface PaymentMethod {
+    boolean processPayment(double amount, PaymentDetails paymentDetails);
+}

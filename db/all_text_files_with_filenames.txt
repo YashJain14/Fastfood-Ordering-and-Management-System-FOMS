@@ -1,0 +1,721 @@
+=== ./UserDBController.java ===
+package db;
+
+import users.Staff;
+import interfaces.DBController;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.List;
+import java.io.FileWriter;
+
+public class UserDBController implements DBController{
+
+    private static UserDB userDB = new UserDB();
+    
+    @Override
+    public boolean readDB(String filename) {
+        try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
+            String line;
+            br.readLine();
+            while ((line = br.readLine()) != null) {
+                String[] values = line.split(",");
+                Staff staffMember = new Staff(values[1], values[0], values[2].charAt(0), values[3].charAt(0), Integer.parseInt(values[4]), Integer.parseInt(values[5]));
+                userDB.getStaffList().add(staffMember);
+            }
+            return true;
+        } catch (IOException e) {
+            System.out.println("Error reading staff data from file: " + e.getMessage());
+            return false;
+        }
+    }
+
+    @Override
+    public boolean writeDB(String filename){
+        List<Staff> staffList = userDB.getStaffList();
+        String[] line = new String[6];
+
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(filename))) {
+            for (Staff staff : staffList) {
+                line[0] = staff.getName();
+                line[1] = staff.getStaffId();
+                line[2] = Character.toString(staff.getRole());
+                line[3] = Character.toString(staff.getGender());
+                line[4] = Integer.toString(staff.getAge());
+                line[5] = Integer.toString(staff.getBranchId());
+            }
+        }catch(IOException e){
+            e.printStackTrace();
+            return false;
+
+        }
+
+        return true;
+
+
+
+    }
+
+
+
+
+    public List<Staff> getAllStaff() {
+        return userDB.getStaffList();
+    }
+
+
+
+    public Staff getStaffByLoginId(String loginId) throws NullPointerException{
+
+        return userDB.getStaffList().stream()
+                .filter(staff -> staff.getStaffId().equals(loginId))
+                .findFirst()
+                .orElseThrow(()-> new NullPointerException());
+    }
+
+
+    public int addStaff(Staff newStaff) {
+        try{
+        getStaffByLoginId(newStaff.getStaffId());
+        }catch(NullPointerException e) {
+            return 4;
+        }
+
+        
+        int branchId = newStaff.getBranchId();
+
+        try{
+        BranchDBController branchDBController= new BranchDBController(true);
+
+        branch_management.Branch branch = branchDBController.getBranchById(branchId);
+        branch_management.BranchHR hr = branch.getBranchHR();
+        
+
+
+        if(newStaff.getRole() == 'M'){
+            boolean attempt = hr.addManager(newStaff);
+            if (! attempt){
+                return 1;
+            }  
+        }
+
+        else{
+            boolean attempt = hr.addStaff(newStaff);
+            if (! attempt){
+                return 2;
+            }  
+        }
+    }catch(NullPointerException e){
+        return 3;
+
+    }
+
+
+        userDB.getStaffList().add(newStaff);
+        return 0;
+    }
+
+    public boolean updateStaffId(String staffId, String newStaffId ) {
+
+        Staff staffToUpdate = getStaffByLoginId(staffId);
+        if (staffToUpdate == null) {
+            return false;
+        }
+
+        if (getStaffByLoginId(newStaffId) == null) {
+            staffToUpdate.setId(newStaffId);
+            return true;
+        }
+        return false;
+
+    }
+
+    public int removeStaff(String loginId) {
+
+        try{
+            Staff staffToRemove = getStaffByLoginId(loginId);
+
+            int branchId = staffToRemove.getBranchId();
+
+
+            BranchDBController branchDBController= new BranchDBController(true);
+
+            branch_management.Branch branch = branchDBController.getBranchById(branchId);
+            branch_management.BranchHR hr = branch.getBranchHR();
+
+            if (hr.checkManagerisZero()){
+                if (hr.checkStaffisZero()){
+                    return 1;
+                }
+                else{
+                    return 2;
+                }
+            }
+            userDB.getStaffList().remove(staffToRemove);
+
+            return 0;
+        } 
+        
+        catch (NullPointerException e){
+            return 3;
+        }
+    }
+
+
+    public int assignManager(int branchId, String staffId){
+        try{
+            Staff staffToRemove = getStaffByLoginId(staffId);
+
+
+            BranchDBController branchDBController= new BranchDBController(true);
+
+            branch_management.Branch branch = branchDBController.getBranchById(branchId);
+            branch_management.BranchHR hr = branch.getBranchHR();
+
+            if (hr.checkManagerisZero()){
+                if (hr.checkStaffisZero()){
+                    return 1;
+                }
+                else{
+                    return 2;
+                }
+            }
+            userDB.getStaffList().remove(staffToRemove);
+
+            return 0;
+        } 
+        
+        catch (NullPointerException e){
+            return 3;
+        }
+
+    }
+
+    public int transferStaff(int dst, int src, String staffId){
+        try{
+            Staff staffToRemove = getStaffByLoginId(staffId);
+
+
+            BranchDBController branchDBController= new BranchDBController(true);
+
+            branch_management.Branch srcBranch = branchDBController.getBranchById(src);
+            branch_management.Branch dstBranch = branchDBController.getBranchById(dst);
+            branch_management.BranchHR srchr = srcBranch.getBranchHR();
+            branch_management.BranchHR dsthr = dstBranch.getBranchHR();
+
+            if ( staffToRemove.getRole() == 'M' && srchr.checkManagerisZero()){
+                if (srchr.checkStaffisZero()){
+                    return 1;
+                }
+                else{
+                    return 2;
+                }
+            }
+
+
+            else{
+                if (staffToRemove.getRole() == 'M'){
+                    boolean attempt = dsthr.addManager(staffToRemove);
+                    if (!attempt){
+                        return 3;
+                    }
+                }
+
+                else {
+                    boolean attempt = dsthr.addStaff(staffToRemove);
+                    if (!attempt){
+                        return 3;
+                    }
+                }
+            }
+
+            userDB.getStaffList().remove(staffToRemove);
+
+            return 0;
+        } 
+        
+        catch (NullPointerException e){
+            return 3;
+        }
+    }
+
+
+    public List<Staff
+}
+=== ./OrderListController.java ===
+package db;
+import orders.*;
+
+public class OrderListController {
+    private static OrderList orderList = new OrderList(/* branchId */);
+
+    public OrderState getOrderStatus(int orderId) {
+        return orderList.getOrderStatus(orderId);
+    }
+
+    public void setOrderStatus(int orderId, OrderState newState) {
+        orderList.setOrderStatus(orderId, newState);
+    }
+
+    public void createOrder(Cart cart, boolean isTakeaway) {
+        orderList.createOrder(cart, isTakeaway);
+    }
+
+    public Order getOrder(int orderId) {
+        return orderList.getOrder(orderId);
+    }
+
+    public Order[] getUnfinishedOrders(int branchId) {
+        List<Order> branchOrderList = orderList.getBranchOrders().get(branchId);
+        return branchOrderList.stream()
+                .filter(order -> order.getOrderState().equals(OrderState.NEW_ORDER))
+                .toArray(Order[]::new);
+    }
+
+    public Order getNextOrder(int branchId) {
+        List<Order> branchOrderList = orderList.getBranchOrders().get(branchId);
+        return branchOrderList.stream()
+                .filter(order -> order.getOrderState().equals(OrderState.NEW_ORDER))
+                .findFirst()
+                .orElse(null);
+    }
+
+    public boolean writeOrderList(String filename) {
+        try {
+            FileOutputStream fileOut = new FileOutputStream(filename);
+            ObjectOutputStream out = new ObjectOutputStream(fileOut);
+            out.writeObject(orderList);
+            out.close();
+            fileOut.close();
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean readOrderList(String filename) {
+        try {
+            FileInputStream fileIn = new FileInputStream(filename);
+            ObjectInputStream in = new ObjectInputStream(fileIn);
+            this.orderList = (OrderList) in.readObject();
+            in.close();
+            fileIn.close();
+            return true;
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+}=== ./BranchDBController.java ===
+package db;
+
+import java.io.*;
+import java.util.*;
+import branch_management.*;
+
+
+public class BranchDBController {
+    private static BranchDB branchDB;
+
+    public BranchDBController(){
+        branchDB = new BranchDB();
+    }
+
+    public BranchDBController(boolean isDatabase){
+    }
+
+    public HashMap<Integer, String> getAllBranches() {
+        return branchDB.getIdToNameMap();
+    }
+
+    public Branch getBranch(int branchId) {
+        return branchDB.getBranchById(branchId);
+    }
+
+    public void addBranch(Branch branch) {
+        branchDB.addBranch(branch);
+    }
+
+    public boolean writeDB(String filename) {
+
+        List<Branch> branchList = branchDB.getBranchList();
+        String[] line = new String[8];
+
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(filename))) {
+            for (Branch branch : branchList) {
+                line[0] = Integer.toString(branch.getBranchId());
+                line[1] = branch.getBranchName();
+                line[2] = branch.getLocation();
+
+
+                line[3] = Integer.toString(branch.getBranchHR().getStaffQuota());
+
+                line[5] =  branch.getisOpen() ? "1" : "0";
+                line[6] = Integer.toString(branch.getBranchHR().getNoStaff());
+                line[7] = Integer.toString(branch.getBranchHR().getNoManagers());
+
+                Menu menu = branch.getMenu();
+
+                String menuDetails = "";
+
+                for( MenuItem menuItem: menu.getFoodList()) {
+                	String[] itemDetails = new String[6]; 
+                    
+                    itemDetails[0] = Integer.toString(menuItem.getId());
+
+                    FoodCategory foodcat = menuItem.getCategory();
+
+                	if (foodcat == FoodCategory.BURGER) {
+                		itemDetails[1] = "BURGER";
+                	}
+                	else if (foodcat == FoodCategory.SET_MEAL) {
+                		itemDetails[1] = "SET MEAL";
+                	}
+                	
+                	else if (foodcat == FoodCategory.DRINK) {
+                		itemDetails[1] = "DRINK";
+                	}
+                    else{
+                        itemDetails[1] = "SIDE";
+                    }
+
+                    itemDetails[2] = menuItem.getName();
+
+                    itemDetails[3] = Double.toString(menuItem.getPrice());
+
+                    itemDetails[4] = menuItem.isAvailable() ? "1" : "0";
+
+                    itemDetails[5] = menuItem.getDescription();
+
+                    if (menuDetails == ""){
+                        menuDetails = String.join(":", itemDetails);
+                    }
+                    
+                    else{
+                        menuDetails = menuDetails + ";" + String.join(":", itemDetails);
+                    }
+                
+                }
+
+                line[4] = menuDetails;
+
+                for (String data : line){
+                    bw.write(data);
+                    bw.write(",");
+                }
+                bw.newLine();
+            }
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean readDB(String filename) {
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(filename));
+            
+            String line;
+
+            line = reader.readLine();
+
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(",");
+                int branchId = Integer.parseInt(parts[0].trim());
+                String name = parts[1].trim();
+                String location = parts[2].trim();
+                int staffQuota = Integer.parseInt(parts[3].trim());
+                String menuDetails = parts[4].trim();
+
+                boolean isOpen = parts[5] == "1";
+
+                int noStaff = Integer.parseInt(parts[6].trim());
+
+                int noManager = Integer.parseInt(parts[7].trim());
+
+
+                
+                Branch branch = new Branch(branchId, name, staffQuota, location, isOpen, noStaff, noManager);
+                
+                String[] menuItems = menuDetails.split(";");
+
+                Menu menu = branch.getMenu();
+                		
+                for(String menuItem : menuItems) {
+                	String[] itemDetails = menuItem.split(":");
+                	int itemId = Integer.parseInt(itemDetails[0].trim());
+                	String category = itemDetails[1].trim();
+
+                    FoodCategory foodcat;
+                	
+                	if (category == "BURGER") {
+                		foodcat = FoodCategory.BURGER;
+                	}
+                	else if (category == "SET MEAL") {
+                		foodcat = FoodCategory.SET_MEAL;
+                	}
+                	
+                	else if (category == "DRINK") {
+                		foodcat = FoodCategory.DRINK;
+                	}
+                	
+                	else{
+                		foodcat = FoodCategory.SIDE;
+                	}
+
+                    String itemName = itemDetails[2].trim();
+
+                    double price = Double.parseDouble(itemDetails[3].trim());
+
+                    boolean availability = itemDetails[4].trim() == "1";
+                    String description = itemDetails[5].trim();
+
+                    menu.addItem(itemId, itemName, price, foodcat, availability, description);
+                
+                }
+
+                this.addBranch(branch);
+            }
+            reader.close();
+            return true;
+        } catch (IOException  e) {
+            e.printStackTrace();
+            return false;
+        }
+
+        
+
+    }
+}=== ./PaymentMethodDBController.java ===
+package db;
+
+
+import java.util.*;
+import interfaces.*;
+import java.io.*;
+import orders.PaymentMethodEnum;
+import orders.PaynowPayment;
+
+public class PaymentMethodDBController implements DBController{
+    private static PaymentMethodDB paymentMethodDB = new PaymentMethodDB();
+
+    @Override
+    public boolean readDB(String filename){
+        try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
+            String line;
+            br.readLine();
+            while ((line = br.readLine()) != null) {
+                String[] values = line.split(",");
+                if (values[0].trim() == "PayNow"){
+                    paymentMethodDB.getAvailablePayment().put(PaymentMethodEnum.PaynowPayment, Integer.parseInt(values[1]));
+                }
+
+                else if(values[0].trim() == "Credit Card"){
+                    paymentMethodDB.getAvailablePayment().put(PaymentMethodEnum.CreditCardPayment, Integer.parseInt(values[1]));
+
+                }
+
+                else{
+                    paymentMethodDB.getAvailablePayment().put(PaymentMethodEnum.PayPal, Integer.parseInt(values[1]));
+                }
+            }}catch (IOException e){
+                return false;
+            }
+
+            return true;
+
+    }
+
+    @Override
+    public boolean writeDB(String filename){
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(filename))) {
+            String[] line = new String[6];
+            for (PaymentMethodEnum paymentMethod : paymentMethodDB.getAvailablePayment().keySet()) {
+
+                if (PaymentMethodEnum.PaynowPayment == paymentMethod){
+                    bw.write("PayNow");
+                }
+                else if (PaymentMethodEnum.CreditCardPayment == paymentMethod){
+                    bw.write("Credit Card");
+                }
+                else{
+                    bw.write("PayPal");
+                }
+                bw.newLine();}
+
+        }catch(IOException e){
+            e.printStackTrace();
+            return false;
+
+        }
+
+        return true;
+
+
+
+    }
+
+    public boolean isAvailable(PaymentMethodEnum paymentMethodEnum){
+        return paymentMethodDB.getAvailablePayment().get(paymentMethodEnum) == 1;
+    }
+
+
+    
+}
+=== ./UserDB.java ===
+package db;
+
+import java.io.Serializable;
+import java.util.List;
+import users.Staff;
+import java.util.ArrayList;
+import java.util.HashMap;
+
+public class UserDB implements Serializable{
+    private static final long serialVersionUID = 1L;
+    private List<Staff> staffList = new ArrayList<>();
+    
+    public List<Staff> getStaffList(){
+        return staffList;
+    }
+
+}
+=== ./PaymentMethodDB.java ===
+package db;
+
+import java.util.HashMap;
+import orders.PaymentMethodEnum;
+
+
+//hash map of payment method to boolean --> payment method and whether it is activated 
+// return payment status then get payment method and return a boolean 
+// 
+
+public class PaymentMethodDB {
+    HashMap <PaymentMethodEnum, Integer> availablePayments;
+
+    public HashMap <PaymentMethodEnum, Integer> getAvailablePayment(){
+        return availablePayments;
+    }
+    
+
+}
+=== ./BranchDB.java ===
+package db;
+
+import java.util.*;
+import branch_management.Branch;
+import java.io.*;
+
+public class BranchDB implements Serializable{
+	private static final long serialVersionUID = 1L;
+	
+    private HashMap<Integer, String> branchIdToNameMap;
+    private List<Branch> branchList;
+    public BranchDB() {
+        this.branchIdToNameMap = new HashMap<>();
+        this.branchList = new ArrayList<>();
+    }
+
+    public void addBranch(Branch branch) {
+        // Add branch object to list
+        branchList.add(branch);
+        // Map branch ID to branch name
+        branchIdToNameMap.put(branch.getBranchId(), branch.getBranchName());
+    }
+
+    public Branch getBranchById(int branchId) {
+        // Return branch object from list matching the branch ID
+        return branchList.stream()
+                         .filter(branch -> branch.getBranchId() == branchId)
+                         .findFirst()
+                         .orElse(null);
+    }
+
+    public String getBranchNameById(int branchId) {
+        // Return branch name from map by branch ID
+        return branchIdToNameMap.get(branchId);
+    }
+
+    public void setBranchName(int branchId, String branchName) {
+        // Update branch name in map
+        branchIdToNameMap.put(branchId, branchName);
+        // Update branch name in list of branch objects
+        branchList.stream()
+                  .filter(branch -> branch.getBranchId() == branchId)
+                  .findFirst()
+                  .ifPresent(branch -> branch.setBranchName(branchName));
+    }
+
+    public List<Branch> getBranchList() {
+        return branchList;
+    }
+
+    public void setBranchList(List<Branch> branchList) {
+        this.branchList = branchList;
+        // Update the map according to the new list
+        this.branchIdToNameMap.clear();
+        for (Branch branch : branchList) {
+            branchIdToNameMap.put(branch.getBranchId(), branch.getBranchName());
+        }
+    }
+    
+    public HashMap<Integer, String> getIdToNameMap(){
+    	return branchIdToNameMap;
+    }
+}
+
+=== ./OrderList.java ===
+package db;
+
+import orders.*;
+import java.io.*;
+import java.util.HashMap;
+import java.util.List;
+
+class OrderList implements Serializable {
+    private static final long serialVersionUID = 1L; 
+
+    private HashMap<Integer, Order> orders;
+    private HashMap<Integer, List<Order>> branchOrders;
+
+    public OrderList() {
+        orders = new HashMap<>();
+        branchOrders = new HashMap<>();
+    }
+
+    public OrderState getOrderStatus(int orderId) {
+        Order order = orders.get(orderId);
+        if (order != null) {
+            return order.getStatus();
+        }
+        return null;
+    }
+
+    public void setOrderStatus(int orderId, OrderState newState) {
+        Order order = orders.get(orderId);
+        if (order != null) {
+            order.setStatus(newState);
+        }
+    }
+
+    public void createOrder(Cart cart, boolean isTakeaway) {
+        Order newOrder = new Order(isTakeaway, cart);
+        orders.put(newOrder.getOrderId(), newOrder);
+        for (List<Order> branchOrderList : branchOrders.values()) {
+            branchOrderList.add(newOrder);
+        }
+    }
+
+    public Order getOrder(int orderId) {
+        return orders.get(orderId);
+    }
+
+    public HashMap<Integer, List<Order>> getBranchOrders() {
+        return branchOrders;
+    }
+}

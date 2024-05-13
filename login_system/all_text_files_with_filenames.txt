@@ -1,0 +1,227 @@
+=== ./PasswordInput.java ===
+package LoginSystem;
+
+import java.util.Scanner;
+import db.UserDBController;
+
+public class PasswordInput {
+    private Scanner scanner;
+    private UserDBController userDBController;
+
+    public PasswordInput(Scanner scanner, UserDBController userDBController) {
+        this.scanner = scanner;
+        this.userDBController = userDBController;
+    }
+
+    public boolean inputAndVerifyPassword(String staffId) {
+        System.out.println("Enter password for staff ID " + staffId + ":");
+        String userInput = scanner.nextLine();
+        if (userInput == null || userInput.trim().isEmpty()) {
+        System.out.println("Password cannot be empty.");
+        return false;
+    }
+        PasswordVerifier passwordVerifier = new PasswordVerifier(userDBController);
+        return passwordVerifier.verifyPassword(staffId, userInput);
+    }
+}
+
+=== ./LoginPage.java ===
+package LoginSystem;
+
+import java.util.Scanner;
+import interfaces.UserInterface;
+// import db.BranchDBInterface;
+import db.BranchDB;
+import branch_management.Branch;
+import users.User;
+import db.BranchDBController;
+import db.UserDBController;
+
+public class LoginPage {
+	
+	private BranchSelector branchSelector;
+	private Scanner scanner;
+	private PasswordInput passwordInput;
+	private PasswordChanger passwordChanger;
+	private PasswordVerifier passwordVerifier;
+	
+    public LoginPage(Scanner scanner, UserDBController userDBController, BranchDBController branchDBController) {
+        this.scanner = scanner;
+        this.branchSelector = new BranchSelector(scanner, branchDBController);
+        this.passwordInput = new PasswordInput(scanner, userDBController);  // Corrected
+        this.passwordChanger = new PasswordChanger(userDBController);  // Corrected
+        this.passwordVerifier = new PasswordVerifier(userDBController);
+    }
+	
+    private boolean validateStaffLogin(String staffId, Branch branch) {
+        System.out.println("Enter password:");
+        String password = scanner.nextLine();
+        return passwordVerifier.verifyPassword(staffId, password);  // Corrected
+    }
+	
+	public void genUI() {
+		System.out.println("Welcome to the Fastfood Ordering and Management System (FOMS)");
+        System.out.println("Please select an option:");
+        System.out.println("1. Staff Login");
+        System.out.println("2. Order Food");
+        System.out.println("Enter 'exit' to close the application.");
+
+        String userInput = scanner.nextLine().trim();
+
+        // Process the input
+        switch (userInput) {
+            case "1": // Staff Login
+                Branch selectedBranch = branchSelector.selectBranch();  
+                System.out.println("Selected Branch: " + selectedBranch.getName()); 
+                System.out.println("Please enter your staff ID:");
+                String staffId = scanner.nextLine();
+                boolean isValidPassword = validateStaffLogin(staffId, selectedBranch);
+                if (isValidPassword) {
+                    System.out.println("Login successful!");
+                } else {
+                    System.out.println("Invalid password. Please try again.");
+                    System.out.println("1. Try again");
+                    System.out.println("2. Reset password");
+                    String option = scanner.nextLine().trim();
+
+                    if ("1".equals(option)) {
+                        System.out.println("Please enter your staff ID:");
+                        staffId = scanner.nextLine();
+                        isValidPassword = passwordInput.inputPassword(selectedBranch, staffId);
+                    } else if ("2".equals(option)) {
+                        System.out.println("Please enter your staff ID for password reset:");
+                        staffId = scanner.nextLine();
+                        passwordChanger.passwordChanger(staffId);
+                    } else {
+                        System.out.println("Invalid option.");
+                    }
+                }
+                return;
+            case "2": // Order Food
+                System.out.println("Redirecting to the food ordering system...");
+                return;
+            case "exit":
+                System.out.println("Exiting the application.");
+                System.exit(0);
+                break;
+            default:
+                System.out.println("Invalid option. Please try again.");
+                break;
+        }
+	}
+
+	public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        LoginPage loginPage = new LoginPage(scanner);
+        loginPage.genUI();
+    }
+	
+}
+=== ./PasswordVerifier.java ===
+package LoginSystem;
+
+import users.Staff;
+import db.UserDBController;
+
+public class PasswordVerifier {
+
+    private UserDBController userDBController;
+    public PasswordVerifier(UserDBController userDBController){
+
+    }
+    
+   public boolean verifyPassword(String staffId, String userInput) {
+        try {
+            Staff staffMember = userDBController.getStaffByLoginId(staffId);
+            if (staffMember != null) {
+                return staffMember.checkPassword(userInput);
+            }
+        } catch (Exception e) {
+            System.out.println("Error verifying password: " + e.getMessage());
+        }
+        return false;
+    }
+    
+}
+
+=== ./PasswordChanger.java ===
+package LoginSystem;
+
+import users.Staff;
+import db.UserDBController; 
+
+public class PasswordChanger {
+    private UserDBController userDBController;
+    
+    public PasswordChanger(UserDBController userDBController) {
+        this.userDBController = userDBController;
+    }
+
+    public boolean changePassword(String staffId, String newPassword) {
+        Staff staffMember = userDBController.getStaffByLoginId(staffId);
+        if (staffMember != null) {
+            String hashedPassword = hashPassword(newPassword);
+            staffMember.setPassword(hashedPassword);
+            
+            System.out.println("Password changed successfully.");
+            return true;
+        } else {
+            System.out.println("Staff member not found.");
+            return false;
+        }
+    }
+
+    //IDK HOW TO DO THIS
+    private String hashPassword(String newPassword) {
+        // Implement password hashing here
+        return newPassword; // Replace with actual hashing logic
+    }
+    
+}
+
+=== ./BranchSelector.java ===
+package LoginSystem;
+
+import java.util.*;
+import branch_management.Branch;
+import db.BranchDBController;
+
+public class BranchSelector {
+    private Scanner scanner;
+    private BranchDBController branchDBController;
+
+    public BranchSelector(Scanner scanner, BranchDBController branchDBController) {
+        this.scanner = scanner;
+        this.branchDBController = branchDBController;
+    }
+
+    public Branch selectBranch() {
+        HashMap<Integer, String> branches = branchDBController.getAllBranches();
+        if (branches.isEmpty()) {
+            System.out.println("No branches available.");
+            return null;
+        }
+
+        System.out.println("Please select a branch:");
+        for (int i : branches.keySet()) {
+            System.out.println((i + 1) + ". " + branches.get(i));
+        }
+
+        Branch selectedBranch = null;
+        int branchIndex = -1;
+        while (selectedBranch == null) {
+            System.out.print("Enter the number of the branch: ");
+            try {
+                branchIndex = Integer.parseInt(scanner.nextLine()) - 1; // assuming 1-based user input
+                selectedBranch = branchDBController.getBranch(branchIndex);
+                if (selectedBranch == null) {
+                    System.out.println("Invalid selection. Please try again.");
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Please enter a valid number.");
+            }
+        }
+
+        return selectedBranch;
+    }
+}

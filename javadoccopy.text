@@ -1,0 +1,357 @@
+=== ./module-info.java ===
+/**
+Module declaration for the new_project module.
+This module requires the java.desktop module for GUI functionality.
+/
+=== ./branch_management/FoodCategory.java ===
+/*
+Defines the different categories of food items in the menu.
+The categories include:
+BURGER
+SIDE
+DRINK
+SET_MEAL
+/
+=== ./branch_management/FoodCustomisation.java ===
+/*
+Enumerates the available customizations for different food categories.
+Each food category has a set of predefined customizations, such as:
+BURGER: LESS_PICKLES, LESS_SAUCE, NO_CHEESE
+SIDE: LESS_SAUCE, MORE_SAUCE
+DRINK: MORE_ICE, LESS_ICE, NO_ICE
+SET_MEAL: Combination of customizations from BURGER, SIDE, and DRINK
+This class also provides methods to get, add, and remove customizations for each category.
+/
+=== ./branch_management/Menu.java ===
+/*
+Represents a menu containing a list of food items.
+This class provides methods to:
+Add new food items to the menu with description.
+Remove food items by ID or name.
+Update the price of a food item.
+Find food items by ID or name.
+Get the list of all food items.
+Print the menu for verification and debugging.
+Save the menu to a file for persistence.
+/
+=== ./branch_management/Branch.java ===
+/*
+Represents a branch of the fast-food restaurant.
+Each branch has an ID, name, location, menu, and HR department. It also maintains a status of whether it is open or closed.
+/
+=== ./branch_management/FoodItem.java ===
+/*
+Represents a generic food item on the menu.
+FoodItem is an abstract class that provides basic attributes and methods for food items, including name, price, category, description, and ID.
+Concrete food item classes should extend this class and provide specific details for each type of food item.
+/
+=== ./branch_management/MenuItem.java ===
+/*
+Represents a specific menu item with availability and customizations.
+MenuItem extends the FoodItem class and adds attributes for availability (whether the item is available for order) and customization options.
+/
+=== ./branch_management/BranchHR.java ===
+/*
+Manages the human resources for a branch.
+This class keeps track of the number of staff and managers, as well as the staff quota for the branch. It provides methods to add staff and managers, and to check if the branch has reached its staff quota.
+/
+=== ./login_system/PasswordInput.java ===
+/*
+Handles password input and verification for staff login.
+This class interacts with the user to input their password and then verifies the password against the stored password for the given staff ID. It also handles cases where the password might be empty or insecure.
+/
+=== ./login_system/RetrieveStaff.java ===
+/*
+Retrieves staff information based on the provided staff ID.
+This class interacts with the UserDBController to get the Staff object associated with the given staff ID.
+/
+=== ./login_system/PasswordReset.java ===
+/*
+Provides functionality for staff to reset their passwords.
+This class interacts with the UserDBController to update the password for the specified staff member.
+/
+=== ./login_system/LoginPage.java ===
+/*
+Implements the login page of the application.
+This class provides a user interface for staff login and customer order placement. It interacts with various classes to handle branch selection, password input and verification, user retrieval, and password changes.
+/
+=== ./login_system/PasswordVerifier.java ===
+/*
+Verifies the entered password against the stored password for a given staff ID.
+This class interacts with the UserDBController to retrieve the stored password and then compares it with the provided password.
+*/
+=== ./login_system/PasswordChanger.java ===
+/**
+Facilitates password change functionality for staff members.
+This class interacts with the user to input a new password and verifies its complexity. It then updates the password in the user database through the UserDBController.
+/
+=== ./login_system/BranchSelector.java ===
+/*
+Provides an interface for users to select a branch.
+This class interacts with the BranchDBController to retrieve available branches and presents them to the user for selection. It also handles invalid input and allows users to exit the selection process.
+/
+=== ./customer_ui/ReceiptPrinter.java ===
+/*
+Generates and prints receipts for customer orders.
+This class retrieves order information from the OrderListController and formats it into a receipt format, displaying order details, items, customizations, and the total price.
+/
+=== ./customer_ui/PaymentHandler.java ===
+/*
+Manages the payment process for customer orders.
+This class presents available payment methods to the user, collects payment details, and processes the payment through the chosen payment method. It interacts with the PaymentMethodDBController to determine available payment options and with various payment classes to handle specific payment processes.
+/
+=== ./customer_ui/OrderStatusHandler.java ===
+/*
+Handles inquiries and updates related to order status for customers.
+This class allows customers to view the current status of their order and to mark orders as picked up (completed) when they are ready.
+/
+=== ./customer_ui/TakeoutHandler.java ===
+/*
+Handles the option for customers to choose takeaway or dine-in for their orders.
+/
+=== ./customer_ui/CustomerMainPage.java ===
+/*
+Implements the main interface for customer interactions.
+This class provides a menu-driven interface for customers to view the menu, add items to their cart, manage their cart, make payments, view receipts, check order status, and pick up orders.
+/
+=== ./customer_ui/MenuHandler.java ===
+/*
+Manages the display of the menu to customers.
+This class retrieves menu information from the BranchDBController and displays available menu items with their details to the customer.
+/
+=== ./customer_ui/CartHandler.java ===
+/*
+Handles operations related to the customer's cart.
+This class allows customers to add items to their cart, remove items, clear the cart, and view the contents of the cart with the total cost.
+/
+=== ./customer_ui/OrderPlacer.java ===
+/*
+Facilitates the placement of orders for customers.
+This class interacts with the OrderListController to create a new order based on the items in the customer's cart and the chosen takeaway/dine-in option.
+/
+=== ./staff_ui/StaffListViewer.java ===
+/*
+Provides functionality to view the list of staff members.
+This class retrieves staff information from the UserDBController and displays a list of staff members along with their details, filtered by the specified branch ID.
+/
+=== ./staff_ui/AdminPage.java ===
+/*
+Implements the main interface for admin users.
+This class provides a menu-driven interface for admin users to perform various tasks related to staff management, branch management, payment methods, and more.
+/
+=== ./staff_ui/UserUpdater.java ===
+/*
+Allows for updating staff member information.
+This class provides an interface for updating specific attributes of a staff member, such as name, gender, age, and Staff ID.
+/
+=== ./staff_ui/PaymentManager.java ===
+/*
+Manages the availability of different payment methods for the application.
+This class allows admin users to enable or disable payment methods like Credit Card, PayNow, and PayPal, and to view the current status of available payment options.
+/
+=== ./staff_ui/ListBranches.java ===
+/*
+Provides a list of all branches with their status and staff information.
+/
+=== ./staff_ui/BranchStaffPage.java ===
+/*
+Implements the main interface for branch staff users.
+This class provides a menu-driven interface for branch staff to view and manage orders, check order status, and update order status as needed.
+/
+=== ./staff_ui/ManagerPage.java ===
+/*
+Implements the main interface for branch manager users.
+This class extends the BranchStaffPage and adds additional functionalities for managers, such as viewing the staff list and editing the menu.
+/
+=== ./staff_ui/OrderStatusHandler.java ===
+/*
+Handles order status inquiries and updates for branch staff.
+This class allows branch staff to view the status of orders and to mark orders as ready for pickup. It ensures that only orders belonging to the staff member's branch are accessible.
+/
+=== ./staff_ui/BranchStatusHandler.java ===
+/*
+Manages the opening and closing of branches.
+This class interacts with the BranchDBController to update the status of a branch and allows admin users to open or close branches as needed.
+/
+=== ./staff_ui/FilterCriteria.java ===
+/*
+Provides filtering options for staff lists.
+This class allows users to filter the staff list based on criteria such as role, gender, branch, Staff ID, and age.
+/
+=== ./staff_ui/TransferManager.java ===
+/*
+Handles the transfer and promotion of staff members between branches.
+This class interacts with the UserDBController to update staff member information and ensure that transfer and promotion operations adhere to branch staffing rules and constraints.
+/
+=== ./staff_ui/AccountManager.java ===
+/*
+Manages staff accounts, including adding and removing staff members.
+This class interacts with the UserDBController and BranchDBController to create new staff accounts, remove existing accounts, and handle associated operations such as branch closure and staff promotion when necessary.
+/
+=== ./staff_ui/MenuItemHandler.java ===
+/*
+Provides functionality for branch managers to edit the menu.
+This class allows managers to add new menu items, remove items, edit prices, and update the availability of items on the menu.
+/
+=== ./staff_ui/OrderViewer.java ===
+/*
+Provides order viewing capabilities for branch staff.
+This class allows staff to view specific orders, unfinished orders, and the next order in the queue for their branch.
+/
+=== ./users/Customer.java ===
+/*
+Represents a customer of the fast-food restaurant.
+Each customer is associated with a specific branch and maintains a list of their order IDs.
+/
+=== ./users/User.java ===
+/*
+Abstract class representing a generic user of the system.
+This class serves as the base class for both Customer and Staff classes.
+/
+=== ./users/Staff.java ===
+/*
+Represents a staff member of the fast-food restaurant.
+Each staff member has attributes such as staff ID, name, role (Admin, Manager, or Staff), gender, age, branch ID, and password. The class also provides methods for password management and accessing staff details.
+/
+=== ./db/UserDBController.java ===
+/*
+Manages the database operations related to staff members.
+This class interacts with the UserDB class to read staff data from a file, write staff data to a file, retrieve staff information, add new staff, remove staff, assign managers, and transfer staff between branches.
+/
+=== ./db/OrderChecker.java ===
+/*
+Periodically checks the status of orders and handles cancellations.
+This class runs as a background task and checks the status of all orders at regular intervals. If an order has been in the "READY_TO_PICKUP" state for longer than the allowed time, it is automatically cancelled.
+/
+=== ./db/OrderListController.java ===
+/*
+Manages the database operations related to customer orders.
+This class interacts with the OrderList class to create new orders, retrieve orders, get lists of orders (all, unfinished, next), and handle database read/write operations for order data.
+/
+=== ./db/BranchDBController.java ===
+/*
+Manages the database operations related to branches.
+This class interacts with the BranchDB class to retrieve branch information, add new branches, update branch details, and handle database read/write operations for branch data.
+/
+=== ./db/PaymentMethodDBController.java ===
+/*
+Controls the database operations for available payment methods.
+This class interacts with the PaymentMethodDB to read and write data about which payment methods are enabled or disabled for the application.
+/
+=== ./db/UserDB.java ===
+/*
+Represents the database of staff members.
+This class maintains a list of Staff objects, providing methods to access and manage the staff list.
+/
+=== ./db/PaymentMethodDB.java ===
+/*
+Represents the database of available payment methods.
+This class stores information about which payment methods (e.g., CreditCard, PayNow, PayPal) are currently enabled for the application.
+/
+=== ./db/BranchDB.java ===
+/*
+Represents the database of branch information.
+This class maintains a list of Branch objects and a map for efficient retrieval of branches by ID. It provides methods for adding branches and accessing branch data.
+/
+=== ./db/OrderList.java ===
+/*
+Represents a list of customer orders.
+This class maintains a map of orders by order ID and a map of orders by branch ID. It provides methods to access orders, update order status, create new orders, and retrieve lists of orders based on different criteria.
+/
+=== ./orders/Order.java ===
+/*
+Represents a customer order.
+Each order has attributes such as order ID, branch ID, takeaway status, a list of order items, the current order status, the total price, and the cancellation time (if applicable). The class provides methods to manage the order status, retrieve order details, and calculate the total price.
+/
+=== ./orders/OrderItem.java ===
+/*
+Represents a single item within a customer order.
+Each order item is associated with a specific food item from the menu and includes details such as customizations, quantity, and the total price for that item.
+/
+=== ./orders/PayPalDetails.java ===
+/*
+Stores the email and password for PayPal payments.
+This class provides methods to validate the email and password format for PayPal transactions.
+/
+=== ./orders/OrderState.java ===
+/*
+Defines the possible states of a customer order.
+The order states include:
+NEW_ORDER
+READY_TO_PICKUP
+COMPLETED
+CANCELLED
+/
+=== ./orders/Payment.java ===
+/*
+Handles the processing of payments for orders.
+This class interacts with PaymentMethod and PaymentDetails objects to process payments through different payment methods, such as credit card and PayNow.
+/
+=== ./orders/PaymentMethodEnum.java ===
+/*
+Enumerates the available payment methods for the application.
+The payment methods include:
+PaynowPayment
+CreditCardPayment
+PayPal
+/
+=== ./orders/PaynowDetails.java ===
+/*
+Represents the payment details for PayNow transactions.
+Currently, this class does not hold any specific details as the PayNow implementation uses a QR code for payment.
+/
+=== ./orders/OrderList.java ===
+/*
+Stores and manages a collection of customer orders.
+This class maintains a list of orders and provides methods to access orders, create new orders, update order status, and retrieve lists of orders based on different criteria. It also handles serialization for persistent storage of order data.
+/
+=== ./orders/PayPal.java ===
+/*
+Implements the PayPal payment method.
+This class processes payments using PayPal details and returns a boolean indicating whether the payment was successful.
+/
+=== ./orders/PaynowPayment.java ===
+/*
+Implements the PayNow payment method.
+This class displays a QR code for PayNow payments and allows the user to confirm the payment.
+/
+=== ./orders/Cart.java ===
+/*
+Represents a customer's shopping cart.
+This class stores a list of order items and provides methods to add items to the cart, remove items, calculate the total cost, and clear the cart.
+/
+=== ./orders/CreditCardPayment.java ===
+/*
+Implements the credit card payment method.
+This class processes payments using credit card details and returns a boolean indicating whether the payment was successful.
+/
+=== ./orders/CreditCardDetails.java ===
+/*
+Stores the credit card details for payments.
+This class holds information such as the cardholder's name, card number, expiry date, and CVV. It also provides methods to validate the format of the credit card details.
+/
+=== ./main/MainApplication.java ===
+/*
+The main entry point of the application.
+This class initializes the database controllers, sets up the scanner for user input, and manages the main application loop. It handles user login, navigates to appropriate user interfaces (customer or staff), and ensures proper shutdown procedures, including saving data to files.
+/
+=== ./interfaces/UserInterface.java ===
+/*
+Interface for user interface classes.
+This interface defines a method genUI() that is responsible for generating and displaying the user interface.
+/
+=== ./interfaces/DBController.java ===
+/*
+Interface for database controller classes.
+This interface defines methods for reading data from a file (readDB) and writing data to a file (writeDB).
+/
+=== ./interfaces/PaymentDetails.java ===
+/*
+Interface for payment details classes.
+This interface serves as a marker interface for classes that hold payment details for different payment methods.
+/
+=== ./interfaces/PaymentMethod.java ===
+/*
+Interface for payment method classes.
+This interface defines a method processPayment() that is responsible for processing payments using the provided payment details and amount.
+*/

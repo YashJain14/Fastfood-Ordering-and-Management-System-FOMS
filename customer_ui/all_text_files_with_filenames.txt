@@ -1,0 +1,1918 @@
+=== ./StaffListViewer.java ===
+package ui;
+
+import java.util.Scanner; 
+
+public class StaffListViewer {
+	private Scanner scanner; 
+	private UserDBController userDBController; 
+	
+	// constructor 
+	public StaffListViewer(Scanner scanner, UserDBController userDBController) {
+		this.scanner = scanner; 
+		this.userDBController = userDBController; 
+	}
+	
+	// method to viewstafflist
+	public void viewStaffList(int branchId) {		
+		Staff[] staffList = userDBController.getBranchStaff(branchId); 
+		
+		// print staff list 
+        System.out.println("Staff List:");
+        for (Staff staff : staffList) {
+            System.out.println(staff.toString());
+        }
+	}
+}
+=== ./AdminPage.java ===
+package ui;
+
+import java.util.Scanner; 
+
+public class AdminPage {
+	private Scanner scanner; 
+	private StaffListViewer staffListViewer;
+	private AccountManager accountManager; 
+	private BranchStatusHandler branchStatusHandler; 
+	private TransferManager transferManager; 
+	private Staff user; 
+	
+	public AdminPage(Scanner scanner, Staff user, UserDBController userDBController, BranchDBController branchDBController) {
+		this.scanner = scanner; 
+		this.user = user; 
+		this.staffListViewer = new StaffListViewer(scanner, userDBController);
+		this.accountManager = new AccountManager(scanner, userDBController);
+	}
+	
+	public void genUI() {
+		System.out.println("Admin Actions\n");
+		System.out.println("Welcome, what would you like to do?");
+	 
+		int choice = 0;
+		boolean repeat = true; 
+		  
+		while (repeat) {
+			System.out.println("\n");
+			System.out.println("Select an action:\n");
+			System.out.println("1. Display Staff List\n");
+			System.out.println("2. Edit Staff Accounts\n");
+			System.out.println("3. Assign Branch Managers\n");
+			System.out.println("4. Promote a Staff to Branch Manager\n");
+			System.out.println("5. Transfer Staff/Manager among branches\n");
+			System.out.println("6. Add/remove payment method\n");
+			System.out.println("7. Open/close branch\n");
+		    System.out.println("8. Exit\n");
+		   
+		    choice = scanner.nextInt();
+		    int branchId;
+		    String staffId;
+		   
+		    switch (choice){
+
+		    // display staff list 
+		    case 1:
+		    	System.out.println("Enter Branch ID:");
+		    	branchId = scanner.nextInt();
+		    	staffListViewer.viewStaffList(branchId);
+		    	break;
+		     
+		    // edit staff accounts 
+		    case 2:
+		    	System.out.println("Select an Edit action:\n");
+		        System.out.println("1. Add Account \n");
+		        System.out.println("2. Remove Account \n");
+		        int editChoice = scanner.nextInt();
+		        
+		        switch (editChoice) {
+		            case 1:
+		            	System.out.println("Enter Branch ID:\n");
+		            	int addbranchId = scanner.nextInt();
+		                accountManager.addAccount(addbranchId);
+		                break;
+		            case 2:
+		            	System.out.println("Enter Staff ID:\n");
+		            	staffId = scanner.nextLine();
+		                accountManager.removeAccount(staffId);
+		                break;
+		            default:
+		                System.out.println("Invalid choice. Please enter a valid option (1-2).");
+		                break;
+		     
+		    // assign branch managers
+		    case 3:
+		    	System.out.println("Enter Branch ID:");
+		    	branchId = scanner.nextInt();
+		    	System.out.println("Enter Staff ID:\n");
+            	staffId = scanner.nextLine();
+		        transferManager.assignManager(branchId, staffId);
+		        break; 
+		     
+		    // promote a staff to branch manager 
+		    case 4:
+		    	System.out.println("Promoting staff to branch manager");
+		    	System.out.println("Enter Branch ID:");
+		    	branchId = scanner.nextInt();
+		    	System.out.println("Enter Staff ID:\n");
+            	staffId = scanner.nextLine();		        
+		        break;
+		        
+		    // transfer Staff/Manager among branches
+		    case 5: 
+		    	System.out.println("Enter Branch ID:");
+		    	branchId = scanner.nextInt();
+		    	System.out.println("Enter Staff ID:\n");
+            	staffId = scanner.nextLine();
+		    	transferManager.transferStaff(branchId, staffId);
+		    	break;
+		    	
+		    // add/remove payment method
+		    case 6: 
+		    	
+		    // open/close branch 
+		    case 7: 
+		     
+		    // exit 
+		    case 8:
+		    	repeat = false;
+		    	break; 
+		    	
+		    default:
+                System.out.println("Invalid choice, please select again.");
+                break;
+		    }
+		  }
+	}
+	}
+}
+=== ./ReceiptPrinter.java ===
+package ui;
+import branch_management.MenuItem;
+import db.OrderListController;
+import orders.Order;
+import orders.OrderItem;
+import java.util.List;
+
+import java.util.Scanner;
+
+public class ReceiptPrinter {
+	
+	private Scanner scanner;
+	
+	private OrderListController orderListController;
+	
+	public ReceiptPrinter(Scanner scanner, OrderListController orderListController) {
+		this.scanner = scanner;
+		this.orderListController = orderListController;
+	}
+
+	public void printReceipt(List <Integer> orderIds) {
+		
+		System.out.println("Which order do you want a receipt for?");
+		
+		int option;
+		int temp = 1;
+		
+		for (int id: orderIds) {
+			System.out.printf("%d: %d", temp, id);
+		}
+		
+		option = scanner.nextInt();
+		
+		if (! orderIds.contains(option)) {
+			System.out.println("Invalid Id input. Exiting.");
+			return;
+		}
+		
+		Order order = this.orderListController.getOrderStatus(option);
+		
+		System.out.printf("OrderId: %d", order.getOrderId());
+		
+		System.out.println("\nID \t Item \t Quantity \t Price \t Customizations \n");
+		
+		int index = 1;
+		
+		for (OrderItem item : order.getOrderItems()) {
+			System.out.printf("%d \t %s \t %d \t %f \t", index++, item.get(), item.getQuantity(), item.getPrice());
+			
+			item.getCustomisation().forEach(s -> System.out.printf("%s, ", s));
+			System.out.println("");
+        }
+		
+		System.out.println("Total Price: ");
+		System.out.printf("%f \n", order.getPrice());
+		
+	}
+}
+=== ./UserUpdater.java ===
+package ui;
+import db.UserDBController;
+import java.util.Scanner;
+import users.Staff;
+
+public class UserUpdater {
+
+    private UserDBController userDBController;
+    private Scanner scanner;
+
+    public UserUpdater(Scanner scanner, UserDBController userDBController){
+        this.scanner = scanner;
+        this.userDBController = userDBController;
+    }
+
+
+    public boolean updateUser(){
+        System.out.print("Enter the Staff Login ID of the staff member to update: ");
+        String loginId = scanner.nextLine();
+        Staff staffToUpdate = this.userDBController.getStaffByLoginId(loginId);
+        if (staffToUpdate == null) {
+            System.out.println("Staff member not found.");
+            return false;
+        }
+
+        System.out.println("Select which attribute to update:");
+        System.out.println("1. Name");
+        System.out.println("2. Gender");
+        System.out.println("3. Age");
+        System.out.println("4. StaffId");
+        System.out.print("Enter your choice: ");
+        int choice = scanner.nextInt();
+        scanner.nextLine();
+
+        switch (choice) {
+            case 1:
+                System.out.print("Enter new name: ");
+                String newName = scanner.nextLine();
+                staffToUpdate.setName(newName);
+                break;
+          
+            case 2:
+                System.out.print("Enter new gender: ");
+                char newGender = scanner.nextLine().charAt(0);
+                staffToUpdate.setGender(newGender);
+                break;
+            case 3:
+                System.out.print("Enter new age: ");
+                int newAge = scanner.nextInt();
+
+                if (newAge < 0){
+                    System.out.print("Invalid age");
+                    return false;
+                }
+                staffToUpdate.setAge(newAge);
+                scanner.nextLine();
+                break;
+            case 4:
+                System.out.print("Enter new staffId: ");
+                String newId = scanner.nextLine();
+                staffToUpdate.setId(newId);
+                break;
+            default:
+                System.out.println("Invalid choice.");
+                return false;
+     }
+
+     return true;
+
+}
+}=== ./PaymentManager.java ===
+package ui;
+
+import orders.CreditCardPayment;
+import orders.PaynowPayment;
+import orders.PayPal;
+import java.util.*;
+
+public class PaymentManager {
+    private Map<String, Class<?>> friendlyNameToClassMap;
+    private Map<Class<?>, Boolean> paymentMethodsStatus;
+
+    public PaymentManager() {
+        friendlyNameToClassMap = new HashMap<>();
+        friendlyNameToClassMap.put("CreditCard", CreditCardPayment.class);
+        friendlyNameToClassMap.put("PayNow", PaynowPayment.class);
+        friendlyNameToClassMap.put("PayPal", PayPal.class);
+
+        paymentMethodsStatus = new HashMap<>();
+        friendlyNameToClassMap.forEach((name, clazz) -> paymentMethodsStatus.put(clazz, false));
+        paymentMethodsStatus.replace(CreditCardPayment.class, true);
+        paymentMethodsStatus.replace(PaynowPayment.class, true);
+    }
+
+    public void managePayments() {
+        Scanner scanner = new Scanner(System.in);
+        String input;
+        while (true) {
+            System.out.println("\nAdd/Remove Payment Methods:");
+            System.out.println("1. Add Payment");
+            System.out.println("2. Remove Payment");
+            System.out.println("3. Show Current Payment Methods");
+            System.out.println("4. Exit");
+            System.out.print("Choose an option: ");
+            input = scanner.nextLine();
+
+            switch (input) {
+                case "1":
+                    addPayment(scanner);
+                    break;
+                case "2":
+                    removePayment(scanner);
+                    break;
+                case "3":
+                    showPayments();
+                    break;
+                case "4":
+                    System.out.println("Exiting Payment Manager.");
+                    scanner.close();
+                    return;
+                default:
+                    System.out.println("Invalid choice. Please try again.");
+                    break;
+            }
+        }
+    }
+
+    private void addPayment(Scanner scanner) {
+        System.out.println("Available Payments to Add:");
+        paymentMethodsStatus.forEach((clazz, isEnabled) -> {
+            if (!isEnabled) System.out.println(friendlyNameToClassMap.entrySet().stream()
+                .filter(entry -> entry.getValue().equals(clazz))
+                .findFirst().get().getKey());
+        });
+
+        System.out.print("Enter Payment Method to Enable (CreditCard, PayNow, PayPal): ");
+        String methodName = scanner.nextLine().trim();
+        String key = methodName.equalsIgnoreCase("CreditCard") ? "CreditCard" :
+                     methodName.equalsIgnoreCase("PayNow") ? "PayNow" :
+                     methodName.equalsIgnoreCase("PayPal") ? "PayPal" : null;
+
+        if (key != null && friendlyNameToClassMap.containsKey(key) && !paymentMethodsStatus.get(friendlyNameToClassMap.get(key))) {
+            paymentMethodsStatus.replace(friendlyNameToClassMap.get(key), true);
+            System.out.println(key + " has been enabled.");
+        } else {
+            System.out.println("Invalid method name or method already enabled.");
+        }
+    }
+
+    private void removePayment(Scanner scanner) {
+        System.out.println("Enabled Payments:");
+        paymentMethodsStatus.forEach((clazz, isEnabled) -> {
+            if (isEnabled) System.out.println(friendlyNameToClassMap.entrySet().stream()
+                .filter(entry -> entry.getValue().equals(clazz))
+                .findFirst().get().getKey());
+        });
+
+        System.out.print("Enter Payment Method to Disable (CreditCard, PayNow, PayPal): ");
+        String methodName = scanner.nextLine().trim();
+        String key = methodName.equalsIgnoreCase("CreditCard") ? "CreditCard" :
+                     methodName.equalsIgnoreCase("PayNow") ? "PayNow" :
+                     methodName.equalsIgnoreCase("PayPal") ? "PayPal" : null;
+
+        if (key != null && friendlyNameToClassMap.containsKey(key) && paymentMethodsStatus.get(friendlyNameToClassMap.get(key))) {
+            paymentMethodsStatus.replace(friendlyNameToClassMap.get(key), false);
+            System.out.println(key + " has been disabled.");
+        } else {
+            System.out.println("Invalid method name or method already disabled.");
+        }
+    }
+
+    private void showPayments() {
+        System.out.println("Current Payment Methods Status:");
+        paymentMethodsStatus.forEach((clazz, isEnabled) -> {
+            String name = friendlyNameToClassMap.entrySet().stream()
+                .filter(entry -> entry.getValue().equals(clazz))
+                .findFirst().get().getKey();
+            System.out.println(name + ": " + (isEnabled ? "Enabled" : "Disabled"));
+        });
+    }
+}
+=== ./PaymentHandler.java ===
+package ui;
+
+import java.util.Scanner;
+import orders.*;
+import interfaces.PaymentMethod;
+import interfaces.PaymentDetails;
+import db.PaymentMethodDBController;
+import java.util.List;
+import java.util.ArrayList;
+
+
+public class PaymentHandler {
+
+	private Scanner scanner;
+    private PaymentMethodDBController paymentMethodDBController;
+	
+	private Cart cart;
+	
+	
+	PaymentHandler(Scanner scanner, Cart cart, PaymentMethodDBController paymentMethodDBController){
+		this.scanner = scanner;
+		this.cart = cart;
+        this.paymentMethodDBController = paymentMethodDBController;
+
+	}
+	
+	public boolean processPayment() {
+		
+
+        List<PaymentMethodEnum> paymentMethodEnums = new ArrayList<>();
+
+
+		boolean paymentSuccessful = false;
+
+
+		
+		while (true) {
+            int i = 1;
+            System.out.println("Select payment method:");
+
+            
+
+            
+            if (paymentMethodDBController.isAvailable(PaymentMethodEnum.CreditCardPayment)){
+                System.out.printf("%d. Credit Card\n", i++);
+                paymentMethodEnums.add(PaymentMethodEnum.CreditCardPayment);
+
+            }
+
+            if (paymentMethodDBController.isAvailable(PaymentMethodEnum.PaynowPayment)){
+                System.out.printf("%d. Paynow \n", i++);
+                paymentMethodEnums.add(PaymentMethodEnum.PaynowPayment);
+
+            }
+
+            if (paymentMethodDBController.isAvailable(PaymentMethodEnum.PayPal)){
+                System.out.printf("%d. PayPal \n", i++);
+                paymentMethodEnums.add(PaymentMethodEnum.PayPal);
+            }
+
+            System.out.printf("%d. Quit", i);
+
+
+            int index = scanner.nextInt();
+            scanner.nextLine(); 
+
+            if (index == i){
+                System.out.println("Exiting payment menu.");
+            	break;
+            }
+
+            PaymentMethodEnum choice = paymentMethodEnums.get(index-1);
+
+            PaymentMethod paymentMethod = null;
+            PaymentDetails paymentDetails = null;
+            
+
+            if (choice == PaymentMethodEnum.CreditCardPayment) {
+
+                String cardNumber, expiryDate, cvv, name;
+                boolean validDetails;
+
+                do {
+                    System.out.print("Enter your name: ");
+                    name = scanner.nextLine();
+
+                    System.out.print("Enter credit card number: ");
+                    cardNumber = scanner.nextLine();
+
+                    System.out.print("Enter expiry date (MM/YY): ");
+                    expiryDate = scanner.nextLine();
+
+                    System.out.print("Enter CVV: ");
+                    cvv = scanner.nextLine();
+
+                    paymentDetails = new CreditCardDetails(name, cardNumber, expiryDate, cvv);
+                    validDetails = CreditCardDetails.validateDetails((CreditCardDetails) paymentDetails);
+
+                    if (!validDetails) {
+                        System.out.println("Invalid credit card details. Please try again.");
+                    }
+                } while (!validDetails);
+
+                paymentMethod = new CreditCardPayment();
+                         
+                
+            } else if (choice == PaymentMethodEnum.PaynowPayment) {
+            	
+            	paymentDetails = new PaynowDetails();
+                paymentMethod = new PaynowPayment();
+                
+                
+            } else if (choice == PaymentMethodEnum.PaynowPayment) {
+                String email;
+                String password;
+                boolean validDetails = false;
+
+                do {
+                    System.out.print("Enter your email: ");
+                    email = scanner.nextLine();
+
+                    System.out.print("Enter password: ");
+                    password = scanner.nextLine();
+
+
+                    paymentDetails = new PayPalDetails(email, password);
+                    validDetails = CreditCardDetails.validateDetails((CreditCardDetails) paymentDetails);
+
+                    if (!validDetails) {
+                        System.out.println("Invalid credit card details. Please try again.");
+                    }
+                } while (!validDetails);
+            	
+            }
+            
+            else {
+                System.out.println("Invalid choice. Please try again.");
+                continue;
+            }
+
+            
+            
+            Payment payment = new Payment(cart);
+            paymentSuccessful = payment.processPayment(paymentMethod, paymentDetails);
+
+            if (paymentSuccessful) {
+                System.out.print("Payment Successful");
+            	break; 
+            } else {
+                System.out.println("Payment failed. Please try another payment method.");
+            }
+        }
+		
+		return paymentSuccessful;
+	}
+}
+=== ./BranchStaffPage.java ===
+package ui;
+
+import java.util.InputMismatchException;
+
+import java.util.Scanner; 
+import order.OrderState; 
+import OrderListController; 
+import users.Staff;
+
+public class BranchStaffPage {
+	protected OrderViewer orderViewer; 
+	protected OrderStatusHandler orderStatusHandler;
+	protected Scanner scanner; 
+	private Staff BranchStaff; 
+	
+	public BranchStaffPage(Scanner scanner, Staff BranchStaff, OrderViewer orderViewer, 
+			OrderStatusHandler orderStatusHandler, OrderListController orderListController) {
+		this.scanner = scanner;
+		this.BranchStaff = BranchStaff; 
+		this.orderViewer = new OrderViewer(scanner, BranchStaff.getBranchId()); 
+        this.orderStatusHandler = new OrderStatusHandler(scanner, orderListController);
+	}
+	
+	// main UI
+	public void genUI() {
+		System.out.println("Branch Staff Actions\n");
+		System.out.println("Welcome, what would you like to do?");
+	 
+		int choice = 0;
+		int orderId; 
+		boolean repeat = true; 
+		  
+		while (repeat) {
+			System.out.println("\n");
+			System.out.println("Select an action:\n");
+			System.out.println("1. View New Orders\n");
+			System.out.println("2. View a Particular Order\n");
+			System.out.println("3. Check Order Status\n");
+			System.out.println("4. Update Order Status\n");
+		    System.out.println("5. Exit\n");
+		   
+		    choice = scanner.nextInt();
+		   
+		    switch (choice){
+		    // View New Orders
+		    case 1:
+		    	orderViewer.viewUnfinishedOrder();
+		    	break;
+		     
+		    // View a Particular Order
+		    case 2:
+		    	orderId = getOrderID(); 
+		    	orderViewer.viewOrder(orderId);
+		    	break;
+		     
+		    // Check Order Status
+		    case 3:
+		        orderId = getOrderID(); 
+		        orderStatusHandler.printOrderStatus(orderId);
+		        break; 
+		     
+		    // Update Order Status
+		    case 4:
+		    	orderId = getOrderID(); 
+		        OrderState newState = selectState();
+		        orderStatusHandler.setOrderStatus(orderId, newState);		        
+		        break;
+		     
+		    // exit 
+		    case 5:
+		    	repeat = false;
+		    	break; 
+		    	
+		    default:
+                System.out.println("Invalid choice, please select again.");
+                break;
+		     
+		    }
+		  }
+	}
+	
+	// get orderid 
+	public int getOrderID() {
+		int orderId = -1; 
+        boolean validInput = false;
+        
+        while (!validInput) {
+            System.out.println("Please enter the order ID:");
+            try {
+                orderId = scanner.nextInt();
+                validInput = true;
+            } catch (InputMismatchException e) {
+                System.out.println("Invalid input. Please enter a valid integer.");
+                scanner.next(); 
+            }
+        }
+        return orderId;
+    }
+	
+	// get state 
+	public OrderState selectState() {
+		OrderState selectedState = null;
+	    boolean validInput = false;
+	    
+	    while (!validInput) {
+	        System.out.println("Select the new order status:\n");
+	        System.out.println("1. New Order \n");
+	        System.out.println("2. Ready to Pick up \n");
+	        System.out.println("3. Completed \n");
+	        int statusChoice = scanner.nextInt();
+	        
+	        switch (statusChoice) {
+	            case 1:
+	                selectedState = OrderState.NEW_ORDER;
+	                validInput = true;
+	                break;
+	            case 2:
+	                selectedState = OrderState.READY_TO_PICKUP;
+	                validInput = true;
+	                break;
+	            case 3:
+	                selectedState = OrderState.COMPLETED;
+	                validInput = true;
+	                break;
+	            default:
+	                System.out.println("Invalid choice. Please enter a valid option (1-3).");
+	                break;
+	        }
+	    } 
+	   return selectedState;
+	}
+	   
+}
+	
+	
+=== ./ManagerPage.java ===
+package ui;
+
+import java.util.Scanner;
+import java.util.List;
+import order.OrderState;
+
+public class ManagerPage extends BranchStaffPage {
+	private StaffListViewer staffListViewer; 
+	private MenuItemHandler menuItemHandler; 
+	private Scanner scanner; 
+	private Manager user; 
+
+    public ManagerPage(Scanner scanner, Manager user) {
+        this.scanner = scanner; 
+        this.user = user;
+    }
+
+    // Override genUI method to include additional functionalities
+    @Override
+    public void genUI() {
+    	System.out.println("Manager Actions\n");
+		System.out.println("Welcome, what would you like to do?");
+	 
+        boolean repeat = true;
+        
+        while (repeat) {
+			System.out.println("\n");
+			System.out.println("Select an action:\n");
+			System.out.println("1. View New Orders\n");
+			System.out.println("2. View a Particular Order\n");
+			System.out.println("3. Check Order Status\n");
+			System.out.println("4. Update Order Status\n");
+			System.out.println("5. View Staff List\n");
+            System.out.println("6. Edit Menu\n");
+		    System.out.println("7. Exit\n");
+
+            int choice = scanner.nextInt();
+
+            switch (choice){
+            
+            // View New Orders
+		    case 1:
+		    	orderViewer.viewUnfinishedOrder();
+		    	break;
+		     
+		    // View a Particular Order
+		    case 2:
+		    	int orderId = getOrderID(); 
+		    	orderViewer.viewOrder(orderId);
+		    	break;
+		     
+		    // Check Order Status
+		    case 3:
+		        orderId = getOrderID(); 
+		        orderStatusHandler.printOrderStatus(orderId);
+		        break; 
+		     
+		    // Update Order Status
+		    case 4:
+		    	orderId = getOrderID(); 
+		        OrderState newState = selectState();
+		        orderStatusHandler.setOrderStatus(orderId, newState);		        
+		        break;
+		     
+		    // view staff list  
+		    case 5:
+            	staffListViewer.viewStaffList();
+                break;
+
+            // Edit Menu
+            case 6:
+            	boolean goBack = selectMenuEdit(); // check if manager chose to go back
+                if (goBack) {
+                    continue; // show previous page
+                }
+                break;
+
+            // Exit
+            case 7:
+                repeat = false;
+                break;
+
+            default:
+                System.out.println("Invalid choice, please select again.");
+                break;
+            }
+        }  
+    }
+    
+    public boolean selectMenuEdit() { 
+    	int branchId; 
+    	boolean valid = false; // if choice is not valid, keep repeating
+    	int editChoice; 
+    	
+    	while(!valid) {
+			System.out.println("Select Menu Edits:\n");
+	        System.out.println("1. Add Item \n");
+			System.out.println("2. Remove Item \n");
+			System.out.println("3. Edit Price \n");
+			System.out.println("4. Edit Availability \n");
+			System.out.println("5. Back to Previous Page \n");
+			editChoice = scanner.nextInt(); 
+			
+			switch(editChoice) {
+			case 1:
+				System.out.println("Enter Branch ID:");
+				branchId = scanner.nextInt();
+				menuItemHandler.addItem(branchId); 
+				valid = true; 
+				break; 
+				
+			case 2:
+				System.out.println("Enter the name of the item to remove: ");
+		        String itemName = scanner.nextLine();
+		        menuItemHandler.removeItem(itemName);
+		        valid = true; 
+				break;
+				
+			case 3:
+				menuItemHandler.editPrice();
+				valid = true; 
+				break;
+				
+			case 4:
+				menuItemHandler.editAvailability();
+				valid = true; 
+				break;
+				
+			case 5:
+				return true; // go back to previous page
+				
+			default:
+	            System.out.println("Invalid choice, please select again.");
+	            break;			
+			}
+    	}
+    	
+		return false; // continue with current page 
+    }
+}
+
+
+
+=== ./OrderStatusHandler.java ===
+package ui;
+
+import java.util.Scanner;
+
+import db.OrderListController; 
+import orders.OrderState; 
+
+public class OrderStatusHandler {
+	private OrderListController orderListController; 
+	
+	public OrderStatusHandler( OrderListController orderListController) {
+		this.orderListController = orderListController;
+	}
+
+	public void printOrderStatus(int orderId) {
+		OrderState orderStatus = orderListController.getOrderStatus(orderId);
+		System.out.println("Order " + orderId + " has order status: " + orderStatus);
+	}
+	
+	public boolean setOrderStatus(int orderId, OrderState newState) {
+		OrderState currentState = orderListController.getOrderStatus(orderId);
+		
+		// to check if currentstate and newstate are the same 
+		if (currentState.equals(newState)) {
+			System.out.println("Order " + orderId + " is already in the selected state: " + newState);
+			return false;
+		}
+		else {
+			orderListController.setOrderStatus(orderId, newState);
+			System.out.println("Order " + orderId + " status updated to: " + newState);
+			return true; 
+		}			
+	}
+}
+=== ./FilterByBranch.java ===
+package ui;
+
+import users.Staff;
+import db.UserDBController;
+import java.util.*;
+import java.util.stream.Collectors;
+
+public class FilterByBranch {
+    private String branch;
+    private UserDBController userDBController;
+
+    public FilterByBranch(UserDBController userDBController) {
+        this.userDBController = userDBController;
+    }
+
+    public void promptForBranch(Scanner scanner) {
+        List<Staff> allStaff = userDBController.getAllStaff();
+
+        Set<String> uniqueBranches = allStaff.stream()
+                                             .map(Staff::getBranch)
+                                             .collect(Collectors.toSet());
+
+        System.out.println("Available Branches: " + uniqueBranches);
+        System.out.print("Enter branch to filter by: ");
+        this.branch = scanner.nextLine();
+    }
+
+    public String getBranch() {
+        return branch;
+    }
+
+    public void setBranch(String branch) {
+        this.branch = branch;
+    }
+
+    public List<Staff> filterByBranch() {
+        return userDBController.getAllStaff().stream()
+                .filter(s -> s.getBranch().equals(this.branch))
+                .collect(Collectors.toList());
+    }
+
+    public void resetBranchFilter() {
+        this.branch = null;
+    }
+}
+=== ./BranchStatusHandler.java ===
+package ui;
+
+import java.util.Scanner; 
+import db.BranchDBController; // using getbranch method 
+import branch_management.Branch; 
+
+public class BranchStatusHandler {
+	private Scanner scanner; 
+	private BranchDBController branchDBController;
+	
+	public BranchStatusHandler(Scanner scanner, BranchDBController branchDBController) {
+		this.scanner = scanner; 
+		this.branchDBController = branchDBController; 
+	}
+	
+	public void changeBranchStatus(int branchId) {
+		Branch branch = branchDBController.getBranch(branchId); // get branch instance 
+		
+		// get current branch status	
+		System.out.println("Current branch status is " + (branch.getisOpen() ? "Open" : "Closed") + ".");
+        System.out.print("Change it? (Yes/No): ");
+        String input = scanner.nextLine();
+
+        if (input.equalsIgnoreCase("yes")) {
+            // toggle the branch status
+            branch.setOpen(!branch.getisOpen());
+            System.out.println("Branch status is changed to: " + (branch.getisOpen() ? "Open" : "Closed"));
+        } else { // if user type no 
+            System.out.println("Branch status remains unchanged.");
+        }
+	}
+}
+=== ./FilterCriteria.java ===
+package ui;
+
+import users.Staff;
+import db.UserDBController;
+import java.util.*;
+import java.util.stream.Collectors;
+
+public class FilterCriteria {
+    private String role;
+    private String gender;
+    private Integer age;
+    private String branch;
+
+    private UserDBController userDBController;
+
+    public FilterCriteria(UserDBController userDBController) {
+        this.userDBController = userDBController; 
+    }
+
+    public void promptFilterOptions(Scanner scanner) {
+        List<Staff> allStaff = userDBController.getAllStaff();
+
+        Set<String> uniqueRoles = allStaff.stream()
+                                          .map(Staff::getRole)
+                                          .collect(Collectors.toSet());
+        Set<String> uniqueGenders = allStaff.stream()
+                                            .map(Staff::getGender)
+                                            .collect(Collectors.toSet());
+        Set<String> uniqueBranches = allStaff.stream()
+                                             .map(Staff::getBranch)
+                                             .collect(Collectors.toSet());
+
+        System.out.println("Choose a filter criteria:");
+        System.out.println("1. Role");
+        System.out.println("2. Gender");
+        System.out.println("3. Branch");
+        System.out.println("4. Age");        
+
+        int choice = scanner.nextInt();
+        scanner.nextLine(); 
+
+        switch (choice) {
+            case 1:
+                System.out.println("Available Roles: " + uniqueRoles);
+                System.out.print("Enter role to filter by: ");
+                this.role = scanner.nextLine();
+                break;
+            case 2:
+                System.out.println("Available Genders: " + uniqueGenders);
+                System.out.print("Enter gender to filter by: ");
+                this.gender = scanner.nextLine();
+                break;
+            case 3:
+                System.out.println("Available Branches: " + uniqueBranches);
+                System.out.print("Enter branch to filter by: ");
+                this.branch = scanner.nextLine();
+                break;
+            case 4:
+                System.out.print("Enter age to filter by: ");
+                this.age = scanner.nextInt();
+                scanner.nextLine(); 
+                break;
+            default:
+                System.out.println("Invalid choice. Please try again.");
+                break;
+        }
+    }
+
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public String getGender() {
+        return gender;
+    }
+
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+
+    public Integer getAge() {
+        return age;
+    }
+
+    public void setAge(Integer age) {
+        this.age = age;
+    }
+
+    public String getBranch() {
+        return branch;
+    }
+
+    public void setBranch(String branch) {
+        this.branch = branch;
+    }
+
+
+    public List<Staff> filterStaff() {
+        Stream<Staff> staffStream = userDBController.getAllStaff().stream();
+        if (this.role != null) {
+            staffStream = staffStream.filter(s -> s.getRole().equals(this.role));
+        }
+        if (this.gender != null) {
+            staffStream = staffStream.filter(s -> s.getGender().equals(this.gender));
+        }
+        if (this.age != null) {
+            staffStream = staffStream.filter(s -> s.getAge().equals(this.age));
+        }
+        if (this.branch != null) {
+            staffStream = staffStream.filter(s -> s.getBranch().equals(this.branch));
+        }
+
+        return staffStream.collect(Collectors.toList());
+    }
+
+    public void resetFilters() {
+        this.role = null;
+        this.gender = null;
+        this.age = null;
+        this.branch = null;
+    }
+}
+=== ./TakeoutHandler.java ===
+package ui;
+
+import java.util.Scanner;
+
+public class TakeoutHandler {
+
+	private Scanner scanner;
+	
+	public TakeoutHandler(Scanner scanner) {
+		this.scanner = scanner;
+	}
+	
+	public int checkTakeAway(){
+		int option;
+		
+		while (true) {
+			System.out.println("Would you like to takeaway?");
+			System.out.println("1. Yes  2: No");
+			
+			option = scanner.nextInt();
+			
+					
+			if (option == 1) {
+				return 1;
+			}
+			
+			else if (option == 2) {
+				return 2;
+			}
+			
+			else if (option == -1) {
+				return 0;
+			}
+			
+			else {
+				System.out.println("Invalid input. Try again or input -1 to cancel payment.");
+			}
+		}
+	}
+}
+=== ./CustomerMainPage.java ===
+package ui;
+
+import java.util.Scanner;
+
+import interfaces.UserInterface;
+import db.*;
+
+import orders.OrderState;
+
+import users.Customer;
+
+
+public class CustomerMainPage implements UserInterface{
+	
+	Scanner scanner;
+	PaymentHandler paymentHandler;
+	ReceiptPrinter receiptPrinter;
+	MenuHandler menuHandler;
+	OrderStatusHandler orderStatusHandler;
+	CartHandler cartHandler;
+	OrderPlacer orderPlacer;
+	TakeoutHandler takeoutHandler;
+	Customer user;
+	
+	public CustomerMainPage(Scanner scanner, Customer user, BranchDBController branchDBController, OrderListController orderListController) {
+		this.user = user;
+		this.scanner = scanner;
+		
+		this.menuHandler = new MenuHandler(user.getBranch(), branchDBController);
+		
+		this.cartHandler = new CartHandler(scanner, user.getBranch(), branchDBController);
+		this.paymentHandler = new PaymentHandler(scanner, this.cartHandler.getCart());
+		this.receiptPrinter = new ReceiptPrinter(scanner, orderListController);
+		this.orderStatusHandler = new OrderStatusHandler(orderListController);
+		this.orderPlacer = new OrderPlacer(this.cartHandler.getCart(), orderListController);
+		this.takeoutHandler = new TakeoutHandler(scanner);
+		
+		
+	}
+	
+	public void genUI() {
+		
+		System.out.println("Welcome, what would you like to do?");
+		
+		int choice = 0;
+		
+		while (true) {
+			System.out.println("\n");
+			System.out.println("Select an action:\n");
+			System.out.println("1. View Menu\n");
+			System.out.println("2. Add Item to Cart\n");
+			System.out.println("3. View Cart\n");
+			System.out.println("4. Remove Item from Cart\n");
+			System.out.println("5. Clear Cart\n");
+			System.out.println("6. Make Payment\n");
+			System.out.println("7. View Receipt\n");
+			System.out.println("8. View Order Status\n");
+			System.out.println("9. Receive Order");
+			System.out.println("10. Exit\n");
+			
+			
+			choice = scanner.nextInt();
+			
+			
+			switch (choice){
+			
+				case 1:
+					this.menuHandler.viewMenu();
+					break;
+					
+				case 2:
+					boolean added = this.cartHandler.addItem();
+					
+					if (added) {
+						System.out.println("Item successfully added to Cart");
+					}
+					break;
+					
+				case 3:
+					this.cartHandler.printCart();
+					break;
+					
+				case 4:
+					boolean removed = this.cartHandler.removeItem();
+					
+					if (removed) {
+						System.out.println("Item successfully removed from Cart");
+					}
+					
+					break;
+					
+				case 5:
+					boolean cleared = this.cartHandler.clearCart();
+					
+					if (cleared) {
+						System.out.println("Cart was successfully cleared");
+					}
+					break;
+				
+				case 6:
+					int option;
+					boolean isTakeAway;
+					
+					
+					boolean paymentSuccessful = this.paymentHandler.processPayment();
+					
+					if (paymentSuccessful) {
+						
+						option = this.takeoutHandler.checkTakeAway();
+						
+						if (option == 0) break;
+						
+						else isTakeAway = option == 1;
+						
+						int orderId = this.orderPlacer.placeOrder(isTakeAway, this.user.getBranch());
+					
+						System.out.printf("Your Order Number is: %d", orderId);	
+					}
+					
+					else {
+						System.out.println("Payment not successful returning to Main Menu.");
+					}
+					
+					break;
+				
+				case 7:
+					
+					if (user.getOrders().isEmpty()){
+						System.out.println("No Orders Yet. Exiting");
+					}
+					
+					
+					this.receiptPrinter.printReceipt(user.getOrders());
+						
+				case 8:
+					
+					System.out.println("Which order do you want view status of?");
+					
+					option = scanner.nextInt();
+					
+					this.orderStatusHandler.printOrderStatus(option);	
+					
+					break;
+					
+				case 9:
+					
+					System.out.println("What is your order number?");
+					
+					option = scanner.nextInt();
+					
+					if (! user.getOrders().contains(option)) {
+						System.out.println("Invalid Id input. Exiting.");
+						break;
+					}
+					
+					this.orderStatusHandler.setOrderStatus(option, OrderState.COMPLETED);
+					
+					break;
+					
+				case 10:
+					System.out.println("Are you sure you want to exit? Your Cart and Order History will be lost.");
+					
+					System.out.println("1. Yes I am sure 2. No");
+					
+					option = scanner.nextInt();
+					
+					if (option == 1) {
+						return;
+					}
+					
+				default:
+					System.out.println("Invalid option.\n");	
+					
+			}
+			
+		}
+		
+	}
+	
+
+}
+=== ./MenuHandler.java ===
+package ui;
+
+import branch_management.*;
+import db.BranchDBController;
+
+public class MenuHandler {
+	
+	private Menu menu;
+	
+	
+	
+	public MenuHandler(int branchId, BranchDBController branchDBController) {
+		
+		Branch branch = branchDBController.getBranch(branchId);
+		
+		this.menu = branch.getMenu();
+		
+		
+	}
+	
+
+    public void viewMenu() {
+    	
+		System.out.println("\nItem \t Quantity \t Price \t Customizations \n");
+		
+		for (MenuItem food : this.menu.getFoodList()) {
+			if (food.isAvailable()) {
+				System.out.println("ID: " + food.getId() +
+						"Name: " + food.getName() +
+                        ", Price: " + food.getPrice() +
+                        ", Category: " + food.getCategory() +
+                        ", Availability: " + food.isAvailable());
+			}
+        }	
+    }
+    
+	
+}
+=== ./TransferManager.java ===
+package ui;
+import db.UserDBController; 
+import db.BranchDBController;
+
+import java.util.Scanner; 
+
+public class TransferManager {
+	private Scanner scanner; 
+	private UserDBController userDBController;
+	private BranchDBController branchDBController; 
+	
+	public TransferManager(Scanner scanner, UserDBController userDBController, BranchDBController branchDBController) {
+		this.scanner = scanner; 
+		this.userDBController = userDBController;
+		this.branchDBController = branchDBController;
+	}
+	
+	// transfer staff	
+	public void transferStaff(int dstBranch, int srcBranch, String staffId) {
+		String answer; 
+		int result = userDBController.transferStaff(dstBranch, srcBranch, staffId);
+		switch (result){
+		
+		// 0: success
+		case 0: 
+			System.out.println("Transferred successfully\n"); // test case 17, verify that transfer is reflected
+            break;
+            
+        // 1: after transfer, srcbranch has no staff or managers -> prompt to close branch -> refuse = error
+        case 1:
+        	System.out.println("Transferred successfully\n");
+        	System.out.println("There are no staff/managers in the source branch. close? yes/no\n");
+        	answer = scanner.nextLine();
+        	if (answer.equalsIgnoreCase("yes")) {
+        	    System.out.println("Closing the branch...\n");
+        	    
+        	    // [check needed inputs] code that handles branch closure
+        	    branchDBController.closeBranch(srcBranch);
+        	    
+        	} else { 
+        	    System.out.println("Error\n");
+        	}
+        	break;
+        	
+        // 2: no. of managers in src branch = 0, still have staff, fail and prompt promotion of manager in srcBranch
+        case 2:
+        	System.out.println("There are no more managers in the source branch. promote staff?\n");
+        	answer = scanner.nextLine();
+        	if (answer.equalsIgnoreCase("yes")) {
+        		System.out.println("StaffId of Staff to be promoted: \n");
+        		String promotestaffId = scanner.nextLine();
+        		System.out.println("BranchId of Staff: \n");
+        		int branchId = scanner.nextInt();
+        		assignManager(branchId, promotestaffId);
+        	     	    
+        	} else { 
+        	    System.out.println("Error\n");
+        	}
+        	break;
+        	
+        // 3: no. of staff in dstbranch exceeds threshold, error 
+        case 3:
+        	System.out.println("Error\n");
+        	System.out.println("Too many staff in the destination branch\n");
+        	break;
+		
+        // 4: staff doesnt exist 
+        case 4: 
+        	System.out.println("Staff does not exist\n");
+        	break;
+        	
+        // 5: srcbranch doesnt exist 
+        case 5:
+        	System.out.println("Source branch does not exist\n");
+        	break;
+        				
+        // 6: dstbranch doesnt exist 
+        case 6:
+        	System.out.println("Source branch does not exist\n");
+        	break;
+		}
+	}
+	
+	// assign manager 
+	public void assignManager(int branchId, String staffId) {		
+		int result = userDBController.assignManager(branchId, staffId);
+		switch(result) {
+		// 0: success
+		case 0:
+			System.out.println("Assigned successfully\n");
+			break;
+			
+		// 1: too many managers, error 
+		case 1: 
+			System.out.println("Error\n");
+        	System.out.println("Too many managers\n");
+        	break;
+        	
+        // 2: manager or staff not found, error
+   		case 2: 
+ 			System.out.println("Error\n");
+    	    System.out.println("Staff/Manager not found\n");
+    	    break;
+		}
+	}
+}
+=== ./AccountManager.java ===
+package ui;
+
+import db.UserDBController;
+import db.BranchDBController;
+
+import java.util.Scanner; 
+import users.Staff; 
+
+public class AccountManager {
+	private Scanner scanner; 
+	private UserDBController userDBController; 
+	private BranchDBController branchDBController; 
+	
+	public AccountManager(Scanner scanner, UserDBController userDBController, BranchDBController branchDBController) {
+		this.scanner = scanner; 
+		this.userDBController = userDBController;
+		this.branchDBController = branchDBController; 
+	}
+	
+	// add account	
+	public void addAccount(int branchId) {		
+		// asking user for details 
+        System.out.println("Enter Staff ID:");
+        String staffId = scanner.nextLine();
+
+        System.out.println("Enter Age:");
+        int age = scanner.nextInt();
+        scanner.nextLine(); // consume newline
+
+        System.out.println("Enter Name:");
+        String name = scanner.nextLine();
+
+        System.out.println("Enter Gender (M/F):");
+        char gender = scanner.nextLine().charAt(0);
+
+        System.out.println("Enter Role:");
+        char role = scanner.nextLine().charAt(0);
+        
+        // create user using constructor 
+     	Staff user = new Staff(staffId, name, role, gender, age, branchId);
+		
+        int result = userDBController.addStaff(user);
+        
+        switch(result) {
+        // 0: successfully added the user 
+		case 0:
+			System.out.println("Staff added successfully\n");
+			break;
+		// 1: branch has too many managers
+		case 1:
+			System.out.println("Branch has too many managers\n");
+			break;
+		// 2: branch has too many staff
+		case 2:
+			System.out.println("Branch has too many staff\\n");
+			break;
+		// 3: branch not found
+		case 3:
+			System.out.println("Branch not found\\n");
+			break;
+
+		case 4:
+			System.out.println("staffId was already taken\\n");
+			break;
+        }
+	}
+	
+	// remove account
+	public void removeAccount(String userId) {	
+		String answer;
+        int result = userDBController.removeStaff(userId);
+
+        switch(result) {
+        // 0: successfully removed the user 
+		case 0:
+			System.out.println("Staff removed successfully\n");
+			break;
+			
+		// 1: no. of staff and manager is 0: ask if wanna close branch? no -> error yes-> closebranch()
+		case 1: 
+			System.out.println("No Staff/Managers. Close branch? yes/no\n");
+			answer = scanner.nextLine();
+        	if (answer.equalsIgnoreCase("yes")) {
+        		System.out.println("Closing the branch...\n");
+        	    
+        	    // [check needed inputs] code that handles branch closure
+
+				Staff staff = userDBController.getStaffByLoginId(userId);
+
+				branchDBController.closeBranch(staff.getBranchId());
+
+        	    
+        	} else { 
+        	    System.out.println("Error\n");
+        	}
+        	break;
+        	
+        // 2: theres no managers but theres staff -> prompt to promote staff.
+   		case 2: 
+ 			System.out.println("No Managers. Promote Staff? yes/no\n");
+ 			answer = scanner.nextLine();
+ 			if (answer.equalsIgnoreCase("yes")) {
+ 				System.out.println("StaffId of Staff to be promoted: \n");
+        		String promotestaffId = scanner.nextLine();
+        		System.out.println("BranchId of Staff: \n");
+        		int branchId = scanner.nextInt();
+        		userDBController.assignManager(branchId, promotestaffId);
+        	     	    
+        	} else { 
+        	    System.out.println("Error\n");
+        	}
+        	break;
+        	
+        // 3: staff doesnt exist in branch 
+   		case 3:
+   			System.out.println("Staff does not exist in branch\n");
+   			break;
+		}
+    } 	
+}
+=== ./MenuItemHandler.java ===
+package ui;
+
+import java.util.Scanner;
+import branch_management.Menu;
+import branch_management.Branch;
+import branch_management.FoodCategory;
+import db.BranchDBController;
+import branch_management.MenuItem;
+
+public class MenuItemHandler {
+    private Scanner scanner;
+    private Menu menu;
+
+    public MenuItemHandler(Scanner scanner, int branchId, BranchDBController branchDBController) {
+        this.scanner = scanner;
+        Branch branch = branchDBController.getBranch(branchId);
+        this.menu = branch.getMenu();
+    }
+
+    // Method to add item
+    public void addItem() {
+        System.out.println("Adding new item");
+        System.out.println("Enter new menu item name: ");
+        String name = scanner.nextLine();
+        System.out.println("Price: ");
+        double price = scanner.nextDouble();
+        scanner.nextLine(); // consume newline
+        System.out.println("Select the Food Category:");
+        FoodCategory category = selectFoodCategory();
+        System.out.println("Enter description for the menu item:");
+        String description = scanner.nextLine();
+
+        boolean success = menu.addItem(menu.getFoodList().size() + 1, name, price, category, true, description);
+        if (success) {
+            System.out.println("Item added successfully.");
+        } else {
+            System.out.println("Failed to add item. Item with name '" + name + "' already exists.");
+        }
+    }
+
+    public void removeItem() {
+        System.out.println("Enter menu item name to be removed: ");
+        scanner.nextLine();
+        String name = scanner.nextLine();
+        boolean success = menu.removeFoodByName(name);
+        if (success) {
+            System.out.println("Item removed successfully.");
+        } else {
+            System.out.println("Failed to remove item. Item not found.");
+        }
+    }
+
+    public void editPrice() {
+        System.out.println("Enter the name of the item to edit price: ");
+        scanner.nextLine();
+        String itemName = scanner.nextLine();
+
+        System.out.println("Enter the new price: ");
+        double newPrice = scanner.nextDouble();
+        scanner.nextLine(); // consume newline left over
+
+        // Update the price
+        boolean success = menu.updateFoodPrice(itemName, newPrice);
+        if (success) {
+            System.out.println("Price of item '" + itemName + "' updated successfully to: $" + newPrice);
+        } else {
+            System.out.println("Failed to update price. Item not found.");
+        }
+    }
+
+    public void editAvailability() {
+        System.out.println("Enter the name of the item to edit availability: ");
+        scanner.nextLine();
+        String itemName = scanner.nextLine();
+
+        System.out.println("Enter the new availability (true/false): ");
+        boolean newAvailability = scanner.nextBoolean();
+        scanner.nextLine(); // consume newline left over
+
+        // Update its availability
+        MenuItem item = menu.findItemByNo(menu.findFoodByName(itemName).orElse(null).getId());
+        if (item != null) {
+            item.setAvailable(newAvailability);
+            System.out.println("Availability of item '" + itemName + "' updated successfully to: " + newAvailability);
+        } else {
+            System.out.println("Failed to update availability. Item not found.");
+        }
+    }
+
+    // Helper method to select food category
+    public FoodCategory selectFoodCategory() {
+        while (true) {
+            System.out.println("1. BURGER");
+            System.out.println("2. SIDE");
+            System.out.println("3. DRINK");
+            System.out.println("4. SET_MEAL");
+            System.out.print("Enter your choice (1-4): ");
+            int categoryChoice = scanner.nextInt();
+            scanner.nextLine(); // consume newline left over
+            switch (categoryChoice) {
+                case 1:
+                    return FoodCategory.BURGER;
+                case 2:
+                    return FoodCategory.SIDE;
+                case 3:
+                    return FoodCategory.DRINK;
+                case 4:
+                    return FoodCategory.SET_MEAL;
+                default:
+                    System.out.println("Invalid choice. Please enter a number between 1 and 4.");
+            }
+        }
+    }
+}
+=== ./CartHandler.java ===
+package ui;
+
+import java.util.*;
+import orders.Cart;
+import orders.OrderItem;
+import branch_management.*;
+import db.BranchDBController;
+
+public class CartHandler {
+
+	private Scanner scanner;
+	private Cart cart;
+	private Menu menu;
+	
+	public CartHandler(Scanner scanner,  int branchId, BranchDBController branchDBController) {
+		this.scanner = scanner;
+		Branch branch = branchDBController.getBranchById(branchId);
+		
+		this.menu = branch.getMenu();
+		
+	}
+	
+	public Cart getCart() {
+		return this.cart;
+	}
+	
+	public void printCart() {
+		System.out.printf("Cart: ");
+		
+		System.out.println("\nID \t Item \t Quantity \t Price \t Customizations \n");
+		
+		int index = 1;
+		
+		for (OrderItem item : this.cart.getItems()) {
+			System.out.printf("%d \t %s \t %d \t %d \t", index++, item.getName(), item.getQuantity(), item.getPrice());
+			
+			item.getCustomisation().forEach(s -> System.out.printf("%s, ", s));
+			System.out.println("");
+        }
+		
+		System.out.println("Total Price: ");
+		System.out.printf("%f \n", this.cart.getTotalCost());
+		
+	}
+	
+	
+	@SuppressWarnings("null")
+	public boolean addItem() {
+		
+		String input;
+		int int_input;
+		List <String> customisations = null;
+		MenuItem menuItem = null;
+		
+		while (menuItem == null) {
+			
+			System.out.println("Input the name or ID of the item to add to cart: ");
+			
+			input = scanner.nextLine();
+		
+			try {
+				int itemId = Integer.parseInt(input);
+				
+				if (itemId == -1) {
+					return false;
+				}
+				
+				menuItem = menu.findFoodByNo(itemId);
+			}catch (NumberFormatException e) {
+				menuItem = menu.findFoodByName(input);
+			}
+			
+			if (menuItem == null) {
+				System.out.println("Invalid Item Id or Name. Try again or input -1 to exit");
+			}
+			
+		} 
+		
+		
+		while(true) {
+			int temp = 1;
+			
+			System.out.println("Add Customizations");
+			
+			System.out.printf("0: No More Customizations");
+			for (String cust : menuItem.getCustomisation()) {
+				System.out.printf("%d: %s", temp++, cust);
+				}
+			
+			int_input = scanner.nextInt();
+				
+			if (int_input == -1) {
+				return false;
+			}
+			else if (int_input == 0) {
+				break;
+			}
+			
+			else if (int_input > temp) {
+				System.out.println("Invalid option. Try Again or input -1 to exit");
+				continue;
+			}
+			
+			else {
+				customisations.add(menuItem.getCustomisation().get(int_input - 1));
+			}
+		}
+		
+		while(true) {
+			System.out.println("How many items would you like?");
+			
+			int_input = scanner.nextInt();
+			
+			if (int_input == -1) {
+				return false;
+			}
+			
+			else if (int_input <= 0) {
+				System.out.println("Invalid input. Try again or input -1 to exit");
+				continue;
+			}
+			
+			else {
+				break;
+			}
+			
+		}
+		
+		
+		
+		OrderItem orderItem = new OrderItem(menuItem, customisations, int_input);
+		
+		this.cart.addItem(orderItem);
+		
+		return true;
+		
+	}
+	
+	
+	public boolean removeItem() {
+		int input;
+		
+		System.out.println("Input the ID of the item to remove:");
+			
+		input = scanner.nextInt();
+			
+		return this.cart.removeItem(input);	
+	}
+	
+	public boolean clearCart() {
+		int input;
+		
+		System.out.println("Are you sure you want to clear ALL items from cart?");
+		
+		System.out.println("1: Yes, 2: No");
+		
+		input = scanner.nextInt();
+		
+		if (input == 1) {
+			this.cart.clearCart();
+			return true;
+		}
+		
+		return false;
+	}
+	
+	
+	
+}
+=== ./OrderPlacer.java ===
+package ui;
+
+import db.OrderListController;
+import orders.Cart;
+
+public class OrderPlacer {
+
+    private Cart cart;
+    private OrderListController orderListController;
+    
+    public OrderPlacer(Cart cart, OrderListController orderListController){
+        this.cart = cart;
+        this.orderListController = orderListController;
+    }
+    
+    public int placeOrder(boolean isTakeAway, int branchId) {
+        
+        // Check if the cart has items before placing an order
+        if (cart.getItems().isEmpty()) {
+            System.out.println("Your cart is empty. Please add items before placing the order.");
+            return -1; // Return an error code or throw an exception as per your design
+        }
+
+        System.out.println("Placing order");
+        return this.orderListController.createOrder(cart, isTakeAway, branchId);
+    }
+}
+=== ./OrderViewer.java ===
+package ui;
+
+import java.util.Scanner;
+
+import OrderListController; // we use methods from this class 
+import orders.Order; 
+import orders.OrderItem;
+
+public class OrderViewer {
+	private Scanner scanner; 
+	private int branchid;
+	private OrderListController orderListController; 
+	
+	public OrderViewer(Scanner scanner, int branchid, OrderListController orderListController) {
+		this.scanner = scanner;
+		this.branchid = branchid; 
+		this.orderListController = orderListController;
+	}
+	
+	// view a specific order 
+	public void viewOrder(int orderid) {
+		Order order = orderListController.getOrder(orderid);
+		printOrderDetails(order);
+	}
+	
+	// view new orders
+	public void viewUnfinishedOrder() {
+		Order order = orderListController.getUnfinishedOrders(branchid);
+		printOrderDetails(order);
+	}
+	
+	// view next orders
+	public void viewNextOrder() {
+		Order order = orderListController.getNextOrder(branchid);
+		printOrderDetails(order);
+	}
+	
+	// helper function to print details 
+	public void printOrderDetails(Order order) {
+		System.out.println("Order ID: " + order.getorderId());
+        System.out.println("Is Takeaway: " + order.getisTakeaway());
+        System.out.println("Order Items:");
+        for (OrderItem item : order.orderItems) {
+            System.out.println("\t" + item.toString()); 
+        }
+        System.out.println("Status: " + order.getstatus().toString());
+	}
+}
